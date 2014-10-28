@@ -3,6 +3,8 @@
 #include "mem-detect.h"
 #include "terminal.h"
 
+#include <stdint.h>
+
 #define PAGE_SIZE 0x1000
 #define for_each_frame(address)                                                 \
     for (address = 0;                                                           \
@@ -13,6 +15,7 @@
 #define TBLINDEX(virtual) (virtual >> 12) & 0x3FF
 
 extern uint32_t _end;
+extern uint32_t kernel_physical_end;
 
 static uint32_t kernel_end = (uint32_t)&_end;
 
@@ -124,13 +127,6 @@ static page_directory_t kernel_directory;
 /*     uint32_t address = free_stack_top; */
 /*     memcpy(&free_stack_top, (void *)free_stack_top, sizeof(uint32_t)); */
 /*     return address; */
-/* } */
-
-/* static int frame_is_free(uint32_t address) */
-/* { */
-/*     return mem_range_is_free((uint32_t)address, */
-/*                              (uint32_t)(address + PAGE_SIZE)) */
-/*         && address > kernel_end; */
 /* } */
 
 /**
@@ -256,19 +252,81 @@ static page_directory_t kernel_directory;
 /*     } */
 /* } */
 
-/* void init_free_frame_stack() */
-/* { */
-/*     free_stack_top = 0; */
 
-/*     uint32_t address; */
+static inline int
+__attribute__((section(".boot")))
+mem_range_is_free(multiboot_info_t *mboot_info,
+                  uint32_t start, uint32_t end);
 
-/*     for_each_frame(address) { */
-/*         if (frame_is_free(address)) { */
-/*             (address); */
-/*         } */
-/*     } */
-/* } */
 
+#define for_each_entry(entry, end, mboot)                                       \
+    for (entry = (memory_map_t *)(mboot->mmap_addr),                            \
+                       end = entry + mboot_info->mmap_length;                   \
+    entry < end;                                                                \
+    entry = (memory_map_t *)((unsigned int)entry                                \
+                             + entry->size                                      \
+                             + sizeof(unsigned long)))                          
+
+static inline int
+__attribute__((section(".boot")))
+mem_range_is_free(multiboot_info_t *mboot_info,
+                  uint32_t start, uint32_t end)
+{
+    if (mboot_info->flags & (1 << 6)) {
+        memory_map_t *entry;
+        memory_map_t *last_entry;
+        for_each_entry(entry, last_entry, mboot_info) {
+            uint32_t entry_start = entry->base_addr_low;
+            uint32_t entry_end = entry_start + entry->length_low;
+
+            if (entry_end < start) {
+                continue;
+            }
+
+            if (entry_start < start) {
+                if (entry_end > end) {
+                    return 1;
+                }
+                else {
+                    start = entry_end;
+                }
+            }
+            if (start > end) {
+                return 0;
+            }
+        }
+    }
+
+    return 0;
+}
+
+uint32_t
+__attribute__((section (".text")))
+init_free_frame_stack(multiboot_info_t *mboot_info)
+{
+    free_stack_top = 0;
+
+    uint32_t address;
+    uint32_t count = 0;
+
+    if (!(mboot_info->flags & (1 << 6))) {
+        return 0;
+    }
+
+    for_each_frame(address) {
+        if (address < (uint32_t)&kernel_physical_end) {
+            continue;
+        }
+        
+        if (mem_range_is_free(mboot_info, address, address + PAGE_SIZE)) {
+            *(uint32_t *)address = free_stack_top;
+            free_stack_top = address;
+            ++count;
+        }
+    }
+
+    return count;
+}
 /* void init_paging() */
 /* { */
 /*     init_free_frame_stack(); */

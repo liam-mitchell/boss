@@ -12,6 +12,8 @@
         extern kernel_page_table_low
         extern kernel_num_tables
         extern kernel_main
+
+        extern init_free_frame_stack
         
 section .bootstrap_stack
 align 4096
@@ -157,6 +159,14 @@ virtual_map:
         jmp virtual_map
         
 virtual_map_end:
+
+        ;; Initialize the free frame stack
+        ;; which takes a multiboot * as parameter
+        pop eax                            ; we already have one on the stack
+        push eax                           ; so pop it, push it then push another copy
+
+        call init_free_frame_stack
+
         ;; Tell the processor where our page directory is
         mov eax, kernel_page_directory
         ;; Still have to use physical addresses for this
@@ -172,6 +182,12 @@ virtual_map_end:
         lea eax, [higherhalf]
         jmp eax
 higherhalf:
-	call kernel_main
+        mov esp, kernel_stack              ; reset the stack pointer to the virtual stack
+        
+        mov eax, kernel_page_directory     ; remove our identity mapping now we're
+        mov dword[eax], 0                  ; in the higher half
+        invlpg [0]                         ; and invalidate it in the tlb too
+
+        call kernel_main
 end:
 	jmp end

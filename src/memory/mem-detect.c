@@ -81,40 +81,6 @@ bios_mem_map_t bios_mem_map;
 /*     return 0; */
 /* } */
 
-int
-__attribute__((section(".boot")))
-mem_range_is_free(multiboot_info_t *mboot_info,
-                  uint32_t start, uint32_t end)
-{
-    if (mboot_info->flags & (1 << 6)) {
-        memory_map_t *entry = (memory_map_t *)(mboot_info->mmap_addr);
-        memory_map_t *last_entry = entry + mboot_info->mmap_length;
-
-        while (entry < last_entry) {
-            uint32_t entry_start = entry->base_addr_low;
-            uint32_t entry_end = entry_start + entry->length_low;
-
-            if (entry_end < start) {
-                continue;
-            }
-
-            if (entry_start < start) {
-                if (entry_end > end) {
-                    return 1;
-                }
-                else {
-                    start = entry_end;
-                }
-            }
-            else {
-                return 0;
-            }
-        }
-    }
-
-    return 0;
-}
-
 /* void print_bios_mem_map() */
 /* { */
 /*     for (unsigned int i = 0; i < bios_mem_map.size; ++i) { */

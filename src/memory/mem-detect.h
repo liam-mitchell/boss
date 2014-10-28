@@ -16,9 +16,4 @@ typedef struct bios_mem_map {
 /* int init_bios_mem_map(multiboot_info_t *map); */
 /* void print_bios_mem_map(); */
 
-int
-__attribute__((section (".boot")))
-mem_range_is_free(multiboot_info_t *mboot_info,
-                  uint32_t start, uint32_t end);
-
 #endif

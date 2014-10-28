@@ -17,7 +17,8 @@ EXTERN
  * kernel's main function
  * called from boot.s
  */
-void kernel_main(multiboot_info_t *mboot_info, unsigned int magic) 
+
+void kernel_main()
 {
     /* terminal_init(); */
     /* puts("Hello, world of OS development!\n"); */
