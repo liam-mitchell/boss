@@ -7,6 +7,20 @@ EXTERN
 #include "terminal.h"
 #include "string.h"
 
+extern uint32_t kernel_screen;
+
+/* terminal dimensions */
+static const size_t VGA_WIDTH = 80;
+static const size_t VGA_HEIGHT = 25;
+
+/* terminal location */
+static size_t terminal_row = 0;
+static size_t terminal_column = 0;
+
+/* current terminal colors + buffer base */
+static uint8_t terminal_color = COLOR_LIGHT_GREY | (COLOR_BLACK << 4);
+static uint16_t *terminal_buffer = (uint16_t *)0xB8000;
+
 /**
  * scroll terminal up one line
  */
@@ -56,7 +70,7 @@ void terminal_init()
     terminal_row = 0;
     terminal_column = 0;
     terminal_color = make_color(COLOR_LIGHT_GREY, COLOR_BLACK);
-    terminal_buffer = (uint16_t*)0xB8000;
+    terminal_buffer = (uint16_t *)&kernel_screen;
 
     for (size_t y = 0; y < VGA_HEIGHT; ++y) {
         for (size_t x = 0; x < VGA_WIDTH; ++x) {
@@ -157,7 +171,7 @@ void putui(uint32_t i)
         --pos;
     }
 
-    string[10] = NULL;
+    string[10] = '\0';
 
     ++pos;
 

@@ -6,6 +6,7 @@
         extern KERNEL_VIRTUAL_OFFSET
         extern KERNEL_VIRTUAL_START
         extern KERNEL_PAGE_NUMBER
+        extern kernel_screen
         extern kernel_physical_end
         extern kernel_page_directory
         extern kernel_page_tables
@@ -35,6 +36,17 @@ _start:
         
         mov ebx, kernel_page_table_low
         sub ebx, KERNEL_VIRTUAL_OFFSET
+
+        ;; Zero the page directory
+        xor ecx, ecx
+zero:
+        cmp ecx, 1024
+        jge zero_end
+
+        mov [eax + ecx * 4], dword 0
+        inc ecx
+        jmp zero
+zero_end:       
 
         or  ebx, 0x3        
         mov [eax], ebx          ; kernel_page_directory[0] =
@@ -115,7 +127,6 @@ directory_map:
         inc ecx                         ; ++count
         jmp directory_map
 directory_map_end:
-        
         ;; now, map the kernel into the top 1G
 
         ;; uint32_t virtual = KERNEL_VIRTUAL_START & 0xFFFFF000
@@ -159,7 +170,24 @@ virtual_map:
         jmp virtual_map
         
 virtual_map_end:
+        mov eax, kernel_screen             ; map the terminal buffer into memory
 
+        mov ebx, eax                       ; ebx = kernel_screen
+        shr ebx, 22                        ; ebx = dirindex(kernel_screen)
+
+        mov edx, eax                       ; edx = kernel_screen
+        shr edx, 12                        ; edx = kernel_screen >> 12
+        and edx, 0x3FF                     ; edx = tblindex(kernel_screen)
+
+        mov esi, kernel_page_directory     ; esi = kernel_page_directory
+        sub esi, KERNEL_VIRTUAL_OFFSET     ; still physical pointers
+        
+        mov edi, [esi + 4 * ebx]           ; edi = kernel_directory[dirindex]
+        and edi, 0xFFFFF000                ; remove information bits
+
+        mov ebx, 0xB8007                   ; ebx = physical_screen
+        mov [edi + 4 * edx], ebx           ; kernel_directory[dirindex][tblindex] = 0xB8007
+        
         ;; Initialize the free frame stack
         ;; which takes a multiboot * as parameter
         pop eax                            ; we already have one on the stack

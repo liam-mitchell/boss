@@ -5,7 +5,7 @@
 
 uint32_t ticks = 0;
 
-static void timer_callback(registers_t *registers)
+static void timer_callback(/*registers_t *registers*/)
 {
     ++ticks;
     if (ticks % 100 == 0) {

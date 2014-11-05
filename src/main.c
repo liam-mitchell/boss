@@ -4,7 +4,7 @@
 #include "terminal.h"
 #include "descriptor_tables.h"
 #include "timer.h"
-#include "mem-detect.h"
+#include "kheap.h"
 #include "mboot.h"
 #include "macros.h"
 #include "mm.h"
@@ -18,23 +18,53 @@ EXTERN
  * called from boot.s
  */
 
+extern uint32_t kernel_virtual_end;
+
 void kernel_main()
 {
-    /* terminal_init(); */
-    /* puts("Hello, world of OS development!\n"); */
+    terminal_init();
+    puts("Hello, world of OS development!\n");
 
-    /* init_descriptor_tables(); */
-    /* /\* init_bios_mem_map(mboot_info); *\/ */
-    /* /\* print_bios_mem_map(); *\/ */
+    init_descriptor_tables();
 
-    /* puts("kheap_top: "); */
-    /* puth(top()); */
-    /* putc('\n'); */
+    asm volatile("sti");
+    timer_init(50);
 
-    /* /\* init_paging(); *\/ */
+    puts("kernel_virtual_end: ");
+    puth((uint32_t)&kernel_virtual_end);
+    putc('\n');
 
-    /* asm volatile("sti"); */
-    /* timer_init(50); */
+    puts("free_stack_top: ");
+    puth(top());
+    putc('\n');
+
+    puts("&free_stack_top: ");
+    puth(top_addr());
+    putc('\n');
+    
+    init_kheap();
+
+    uint32_t *allocated = kmalloc(sizeof(*allocated));
+    *allocated = 42;
+    uint32_t *a2 = kmalloc(sizeof(*a2));
+    puts("allocated an integer: ");
+    puti(*allocated);
+    putc('\n');
+
+    puts("allocated: ");
+    puth((uint32_t)allocated);
+    putc('\n');
+    
+    puts("a2: ");
+    puth((uint32_t)a2);
+    putc('\n');
+
+    kfree(allocated);
+    allocated = kmalloc(sizeof(*allocated));
+    
+    puts("allocated: ");
+    puth((uint32_t)allocated);
+    putc('\n');
 }
 
 #ifdef __cplusplus

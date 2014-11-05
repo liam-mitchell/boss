@@ -8,6 +8,49 @@
 #define PIC2_C 0xA0
 #define PIC2_D 0xA1
 
+typedef volatile struct tss {
+    uint16_t link;
+    uint16_t unused1;
+    uint32_t esp0;
+    uint16_t ss0;
+    uint16_t unused2;
+    uint32_t esp1;
+    uint16_t ss1;
+    uint16_t unused3;
+    uint32_t esp2;
+    uint16_t ss2;
+    uint16_t unused4;
+    uint32_t cr3;
+    uint32_t eip;
+    uint32_t eflags;
+    uint32_t eax;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t ebx;
+    uint32_t esp;
+    uint32_t ebp;
+    uint32_t esi;
+    uint32_t edi;
+    uint16_t es;
+    uint16_t unused5;
+    uint16_t cs;
+    uint16_t unused6;
+    uint16_t ss;
+    uint16_t unused7;
+    uint16_t ds;
+    uint16_t unused8;
+    uint16_t fs;
+    uint16_t unused9;
+    uint16_t gs;
+    uint16_t unused10;
+    uint16_t ldtr;
+    uint16_t unused11;
+    uint16_t unused12;
+    uint16_t iopb_offset;
+} tss_t;
+
+static tss_t tss;
+
 extern void gdt_flush(uint32_t ptr);
 extern void idt_flush(uint32_t ptr);
 
@@ -68,7 +111,9 @@ extern void irq13();
 extern void irq14();
 extern void irq15();
 
-gdt_entry_t gdt_entries[5];
+extern uint32_t tss_stack;
+
+gdt_entry_t gdt_entries[6];
 idt_entry_t idt_entries[256];
 gdt_ptr_t gdt_ptr;
 idt_ptr_t idt_ptr;
@@ -90,7 +135,11 @@ static void gdt_init()
 	gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF); // DS
 	gdt_set_gate(3, 0, 0xFFFFFFFF, 0xFA, 0xCF); // userland CS
 	gdt_set_gate(4, 0, 0xFFFFFFFF, 0xF2, 0xCF); // userland DS
+        gdt_set_gate(5, (uint32_t)&tss, sizeof(tss), 0x89, 0xCF);
 
+        tss.ss = 0;
+        tss.esp = (uint32_t)&tss_stack;
+        
 	gdt_flush((uint32_t)&gdt_ptr);
 	puts("GDT flushed.\n");
 }

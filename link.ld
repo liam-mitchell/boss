@@ -48,6 +48,10 @@ SECTIONS
         . += kernel_num_tables * 4K;
 
         . = ALIGN(4K);
+        tss_stack = .;
+        . += 4K;
+
+        . = ALIGN(4K);
         kernel_screen = .;
         . += 4K;
 
@@ -57,5 +61,5 @@ SECTIONS
 
         . = ALIGN(4K);
         kernel_physical_end = . - KERNEL_VIRTUAL_OFFSET;
-
+        kernel_virtual_end = .;
 }
