@@ -2,6 +2,8 @@
         ;; interrupts call handler in interrupt.c
         ;; author: Liam Mitchell
 
+        [GLOBAL] read_eip
+        
 extern interrupt_handler, irq_handler
 
 isr_common:
@@ -20,7 +22,7 @@ isr_common:
 	call interrupt_handler
 
 	add esp, 4
-
+   
 	pop eax
 	mov ds, ax
 	mov es, ax
@@ -58,6 +60,10 @@ irq_common:
 	add esp, 8
 	iret
 
+read_eip:
+        pop eax
+        jmp eax
+        
 %macro ISR_NOERROR 1
 [GLOBAL isr%1]
 isr%1:

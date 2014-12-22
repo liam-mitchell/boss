@@ -2,6 +2,8 @@
         ;; author: Liam Mitchell
 [BITS 32]
 
+        [GLOBAL] kernel_stack
+        
         extern KERNEL_BOOT_OFFSET
         extern KERNEL_VIRTUAL_OFFSET
         extern KERNEL_VIRTUAL_START
@@ -27,10 +29,23 @@ global _start
 _start:
         mov esp, kernel_stack
         sub esp, KERNEL_VIRTUAL_OFFSET
-        
+
+        ;; Move the multiboot info struct out of low memory
+        mov ecx, 0x30
+move_mboot:
+        ;; Push elements of the multiboot struct onto the stack
+        ;; one at a time - original struct is at ebx
+        cmp ecx, 0
+        jl  move_mboot_end
+        push dword [ebx + ecx]
+        sub ecx, 4
+        jmp move_mboot
+
+move_mboot_end:        
+        mov ebx, esp
         push eax                ; Push multiboot magic number
         push ebx                ; and pointer to multiboot struct
-
+        
         mov eax, kernel_page_directory
         sub eax, KERNEL_VIRTUAL_OFFSET
         
@@ -190,9 +205,6 @@ virtual_map_end:
         
         ;; Initialize the free frame stack
         ;; which takes a multiboot * as parameter
-        pop eax                            ; we already have one on the stack
-        push eax                           ; so pop it, push it then push another copy
-
         call init_free_frame_stack
 
         ;; Tell the processor where our page directory is
@@ -209,12 +221,40 @@ virtual_map_end:
         ;; Jump to the higher half kernel
         lea eax, [higherhalf]
         jmp eax
+
 higherhalf:
-        mov esp, kernel_stack              ; reset the stack pointer to the virtual stack
-        
+        add esp, KERNEL_VIRTUAL_OFFSET
+
+        pop ebx       
+        add ebx, KERNEL_VIRTUAL_OFFSET     ; move values from GRUB saved on original stack
+        push ebx
+
+        mov ecx, [ebx + 4]
+        add ecx, KERNEL_VIRTUAL_OFFSET
+        mov [ebx + 4], ecx
+
+        mov ecx, [ebx + 8]
+        add ecx, KERNEL_VIRTUAL_OFFSET
+        mov [ebx + 8], ecx
+
+        mov ecx, [ebx + 44]
+        add ecx, KERNEL_VIRTUAL_OFFSET
+        mov [ebx + 48], ecx
+
         mov eax, kernel_page_directory     ; remove our identity mapping now we're
         mov dword[eax], 0                  ; in the higher half
-        invlpg [0]                         ; and invalidate it in the tlb too
+
+        mov ecx, 0
+physical_unmap:
+        cmp ecx, 0x400000
+        jge physical_unmap_end
+
+        invlpg [ecx]                       ; and invalidate it in the tlb too
+
+        add ecx, 0x1000
+        jmp physical_unmap
+
+physical_unmap_end:     
 
         call kernel_main
 end:

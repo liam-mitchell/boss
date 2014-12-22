@@ -3,6 +3,7 @@
 
 	[GLOBAL idt_flush]
         [GLOBAL gdt_flush]
+        [GLOBAL load_task_register]
         
 idt_flush:
 	mov eax, [esp + 4]
@@ -22,3 +23,8 @@ gdt_flush:
 	jmp 0x08:flush
 flush:
 	ret
+
+load_task_register:
+        mov eax, 0x00000028
+        ltr [eax]
+        ret

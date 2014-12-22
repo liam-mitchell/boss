@@ -46,7 +46,7 @@ SECTIONS
         kernel_page_tables = .;
         kernel_num_tables = (((0xFFFFFFFF - (KERNEL_VIRTUAL_START & 0xFFC00000)) + 1) / 0x400000) - 1;
         . += kernel_num_tables * 4K;
-
+        
         . = ALIGN(4K);
         tss_stack = .;
         . += 4K;
@@ -62,4 +62,8 @@ SECTIONS
         . = ALIGN(4K);
         kernel_physical_end = . - KERNEL_VIRTUAL_OFFSET;
         kernel_virtual_end = .;
+
+        . = ALIGN(4K);
+        kernel_heap_start = .;
+        . += 4K;
 }

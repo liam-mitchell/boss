@@ -10,21 +10,25 @@ interrupt_callback callbacks[256];
 
 void interrupt_handler(registers_t *registers)
 {
-	puts("recieved interrupt: ");
-        puth(registers->interrupt);
-	putc('\n');
+    puts("recieved interrupt: ");
+    puth(registers->interrupt);
+    putc('\n');
+
+    if (callbacks[registers->interrupt] != NULL) {
+        interrupt_callback cb = callbacks[registers->interrupt];
+        cb(registers);
+    }
 }
 
 void irq_handler(registers_t *registers)
 {
+    outb(0x20, 0x20);
+    if (registers->interrupt >= 0x28) outb(0xA0, 0x20);
 
-	outb(0x20, 0x20);
-	if (registers->interrupt >= 0x28) outb(0xA0, 0x20);
-
-	if (callbacks[registers->interrupt] != NULL) {
-		interrupt_callback cb = callbacks[registers->interrupt];
-		cb(registers);
-	}
+    if (callbacks[registers->interrupt] != NULL) {
+        interrupt_callback cb = callbacks[registers->interrupt];
+        cb(registers);
+    }
 }
 
 void register_interrupt_callback(uint8_t n, interrupt_callback cb)

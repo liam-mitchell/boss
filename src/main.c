@@ -1,13 +1,19 @@
 // main.c - entry point for kernel from the bootloader
 // author: Liam Mitchell
 
-#include "terminal.h"
 #include "descriptor_tables.h"
-#include "timer.h"
+#include "fork.h"
+#include "fs.h"
 #include "kheap.h"
-#include "mboot.h"
 #include "macros.h"
+#include "mboot.h"
+#include "memory.h"
 #include "mm.h"
+#include "modules.h"
+#include "task.h"
+#include "terminal.h"
+#include "timer.h"
+#include "vfs.h"
 
 #ifdef __cplusplus
 EXTERN
@@ -18,53 +24,90 @@ EXTERN
  * called from boot.s
  */
 
+extern uint32_t KERNEL_VIRTUAL_START;
 extern uint32_t kernel_virtual_end;
 
-void kernel_main()
+void kernel_main(multiboot_info_t *mboot, uint32_t magic)
 {
     terminal_init();
     puts("Hello, world of OS development!\n");
 
+    if (magic != 0x2BADB002) {
+        puth(magic);
+        puts(" ");
+        puth((uint32_t)mboot);
+        puts(" ");
+        PANIC(" Incorrect magic number from grub!");
+    }
+
+    if (mboot->mods_count == 0) {
+        PANIC("No modules loaded!\n");
+    }
+
+    puts("mboot->flags: ");
+    puth(mboot->flags);
+    putc('\n');
+    puts("mboot->mods_addr: ");
+    puth(mboot->mods_addr);
+    putc('\n');
+    /* puts("module->mod_start: "); */
+    /* puth(((module_t*)mboot->mods_addr)->mod_start); */
+    /* puts("module->mod_end: "); */
+    /* puth(((module_t*)mboot->mods_addr)->mod_end); */
+    
     init_descriptor_tables();
+    init_paging();
 
     asm volatile("sti");
     timer_init(50);
 
-    puts("kernel_virtual_end: ");
-    puth((uint32_t)&kernel_virtual_end);
-    putc('\n');
-
-    puts("free_stack_top: ");
-    puth(top());
-    putc('\n');
-
-    puts("&free_stack_top: ");
-    puth(top_addr());
-    putc('\n');
-    
     init_kheap();
 
-    uint32_t *allocated = kmalloc(sizeof(*allocated));
-    *allocated = 42;
-    uint32_t *a2 = kmalloc(sizeof(*a2));
-    puts("allocated an integer: ");
-    puti(*allocated);
-    putc('\n');
+    init_modules(mboot);
 
-    puts("allocated: ");
-    puth((uint32_t)allocated);
-    putc('\n');
-    
-    puts("a2: ");
-    puth((uint32_t)a2);
-    putc('\n');
+    /* file_t *placeholder = */
+    /*     open_path("/init/bin/placeholder.txt", MODE_READ | MODE_WRITE); */
+    /* puts("placeholder->ino: "); */
+    /* puti(placeholder->inode->ino); */
+    /* putc('\n'); */
 
-    kfree(allocated);
-    allocated = kmalloc(sizeof(*allocated));
+    /* void *buf = kmalloc(placeholder->length); */
+    /* uint32_t len = vfs_read(placeholder, &placeholder->offset, placeholder->length, buf); */
+
+    /* puts("read placeholder.txt: "); */
+    /* puts("(offset "); */
+    /* puth(placeholder->offset); */
+    /* puts(" length "); */
+    /* puth(placeholder->length); */
+    /* puts(")\ndata: "); */
+    /* puts((char *)buf); */
+    /* putc('\n'); */
+    /* puts("read len: "); */
+    /* puth(len); */
+    /* putc('\n'); */
+
+    /* file_t *hello = */
+    /*     open_path("/init/hello.txt", MODE_READ | MODE_WRITE); */
+
+    /* if (!hello) { */
+    /*     PANIC("Couldn't find hello.txt!"); */
+    /* } */
     
-    puts("allocated: ");
-    puth((uint32_t)allocated);
-    putc('\n');
+    /* kfree(buf); */
+    /* buf = kmalloc(hello->length); */
+    /* len = vfs_read(hello, &hello->offset, hello->length, buf); */
+
+    /* puts("read hello.txt: "); */
+    /* puts("(offset "); */
+    /* puth(hello->offset); */
+    /* puts(" length "); */
+    /* puth(hello->length); */
+    /* puts(")\ndata: "); */
+    /* puts((char *)buf); */
+    /* putc('\n'); */
+    /* puts("read len: "); */
+    /* puth(len); */
+    /* putc('\n'); */
 }
 
 #ifdef __cplusplus
