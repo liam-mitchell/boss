@@ -1,19 +1,17 @@
+#include "mm.h"
+
+#include "descriptor_tables.h"
 #include "errno.h"
 #include "interrupt.h"
 #include "kheap.h"
+#include "ldsymbol.h"
 #include "macros.h"
-#include "mm.h"
 #include "memory.h"
 #include "mboot.h"
+#include "printf.h"
 #include "terminal.h"
-#include "descriptor_tables.h"
 
 #include <stdint.h>
-
-#define for_each_frame(address)                                                 \
-    for (address = 0;                                                           \
-         address < 0xFFFFF000;                                                  \
-         address += PAGE_SIZE)
 
 #define for_each_mmap_entry(entry, end, mboot)                                  \
     for (entry = (memory_map_t *)(mboot->mmap_addr),                            \
@@ -30,21 +28,26 @@
 #define MEM_BAD 5
 
 #define PG_PRESENT (1 << 0)
-#define PG_WRITABLE (1 << 1)
+#define PG_WRITEABLE (1 << 1)
 #define PG_USER (1 << 2)
 #define PG_ACCESSED (1 << 3)
 #define PG_DIRTY (1 << 4)
 
-extern uint32_t KERNEL_VIRTUAL_OFFSET;
-extern uint32_t KERNEL_VIRTUAL_START;
+#define PG_IS_PRESENT(p) ((p) & PG_PRESENT)
+#define PG_IS_WRITEABLE(p) ((p) & PG_WRITEABLE)
+#define PG_IS_USERMODE(p) ((p) & PG_USER)
+#define PG_IS_ACCESSED(p) ((p) & PG_ACCESSED)
+#define PG_IS_DIRTY(p) ((p) & PG_DIRTY)
 
-extern uint32_t kernel_page_directory;
-extern uint32_t kernel_page_tables;    
-extern uint32_t kernel_virtual_end;
-extern uint32_t kernel_physical_end;
+extern ldsymbol ld_virtual_offset;
 
-static page_directory_t *currdirectory =
-    (page_directory_t *)&kernel_page_directory;
+extern ldsymbol ld_page_directory;
+extern ldsymbol ld_page_tables;    
+extern ldsymbol ld_temp_pages;
+extern ldsymbol ld_temp_pages_end;
+extern ldsymbol ld_num_temp_pages;
+extern ldsymbol ld_virtual_end;
+extern ldsymbol ld_physical_end;
 
 static uint32_t free_stack_top;
 
@@ -54,35 +57,43 @@ static int map_page(uint32_t virtual, uint32_t physical,
                     uint8_t readonly, uint8_t kernel);
 static void unmap_page();
 
-static page_table_t **get_page_directory_entry(uint32_t virtual)
+uint32_t **get_page_directory_entry(uint32_t virtual)
 {
-    return (page_table_t **)(0xFFFFF000) + DIRINDEX(virtual);
+    return (uint32_t **)0xFFFFF000 + DIRINDEX(virtual);
 }
 
-static page_table_t *get_page_table(uint32_t virtual)
+uint32_t *get_page_table(uint32_t virtual)
 {
-    return (page_table_t *)(0xFFC00000 + DIRINDEX(virtual) * PAGE_SIZE);
+    return (uint32_t *)(0xFFC00000 + DIRINDEX(virtual) * PAGE_SIZE);
 }
 
-static page_t *get_page(uint32_t virtual)
+uint32_t *get_page(uint32_t virtual)
 {
-    return (page_t *)get_page_table(virtual) + TBLINDEX(virtual);
+    return (uint32_t *)get_page_table(virtual) + TBLINDEX(virtual);
 }
 
 uint32_t map_physical(uint32_t physical)
 {
-    for (uint32_t virtual = (uint32_t)&KERNEL_VIRTUAL_START;
-         virtual < 0xFFFFF000;
+    for (uint32_t virtual = (uint32_t)ld_temp_pages;
+         virtual < (uint32_t)ld_temp_pages_end;
          virtual += PAGE_SIZE)
     {
-        page_t *page = get_page(virtual);
-        if (!page->present) {
-            map_page(virtual, physical, 0, 1);
+        uint32_t *page = get_page(virtual);
+        if (!PG_IS_PRESENT(*page)) {
+            if (map_page(virtual, physical, 0, 1) < 0) {
+                continue;
+            }
+
+            printf("Mapping physical address %x to temp pages at %x\n", physical, virtual);
+            printf("page: %x at %x\n", *page, (uint32_t)page);
+            printf("first byte of page: %d\n", *(char *)virtual);
+
             uint32_t offset = physical & 0xFFF;
             return virtual + offset;
         }
     }
 
+    printf("failed to map physical address %x", physical);
     return 0;
 }
 
@@ -104,58 +115,62 @@ static void flush_tlb(uint32_t virtual)
 
 static void unmap_page(uint32_t virtual)
 {
-    page_table_t **direntry = get_page_directory_entry(virtual);
+    uint32_t **direntry = get_page_directory_entry(virtual);
 
-    if (!((uint32_t)(*direntry) & PG_PRESENT)) {
+    if (!PG_IS_PRESENT((uint32_t)*direntry)) {
         PANIC("Attempted to unmap page with no associated page table!");
     }
 
-    page_t *page = get_page(virtual);
+    uint32_t *page = get_page(virtual);
 
-    if (!page->present) {
+    if (!PG_IS_PRESENT(*page)) {
         PANIC("Attempted to unmap a page that wasn't there!");
     }
-    
-    page->present = 0;
+
+    *page = 0;
+
+    printf("unmapped page at virtual address %x\n", virtual);
     flush_tlb(virtual);
 }
-
-/* static void read_next_page(uint32_t virtual) */
-/* { */
-/*     puts("reading page @"); */
-/*     puth(virtual); */
-/*     putc('\n'); */
-/*     memcpy(&free_stack_top, (void *)virtual, sizeof(free_stack_top)); */
-/* } */
 
 static int map_page(uint32_t virtual, uint32_t physical,
                     uint8_t readonly, uint8_t kernel)
 {
-    page_table_t **direntry = get_page_directory_entry(virtual);
-    
-    if (!((uint32_t)(*direntry) & PG_PRESENT)) {
+    uint32_t **direntry = get_page_directory_entry(virtual);
+
+    if (!PG_IS_PRESENT((uint32_t)*direntry)) {
+        uint32_t frame = alloc_frame();
         *direntry =
-            (page_table_t *)((alloc_frame() & 0xFFFFF000)
-                             | PG_USER
-                             | PG_PRESENT
-                             | PG_WRITABLE);
+            (uint32_t *)((frame & 0xFFFFF000)
+                         | PG_USER
+                         | PG_PRESENT
+                         | PG_WRITEABLE);
 
         puts("Allocated a new directory entry\n");
         if (direntry == NULL) {
             return -ENOMEM;
         }
+
+        memset(get_page_table(virtual), 0, PAGE_SIZE);
     }
 
-    page_t *page = get_page(virtual);
+    uint32_t *page = get_page(virtual);
 
-    if (page->present) {
+    if (PG_IS_PRESENT(*page)) {
         return -EINVAL;
     }
 
-    page->present = 1;
-    page->writeable = !readonly;
-    page->user = !kernel;
-    page->frame = physical >> 12;
+    *page |= PG_PRESENT;
+
+    if (!readonly) {
+        *page |= PG_WRITEABLE;
+    }
+
+    if (!kernel) {
+        *page |= PG_USER;
+    }
+
+    *page |= physical & 0xFFFFF000;
 
     flush_tlb(virtual);
     return 1;
@@ -173,12 +188,12 @@ int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
     map_page(virtual, physical, readonly, kernel);
     puts("mapped page! ");
 
-    page_t *page = get_page(virtual);
-    puts(page->present ? "present " : "not present ");
-    puts(page->writeable ? "writeable " : "not writeable ");
-    puts(page->user ? "user " : "not user ");
+    uint32_t *page = get_page(virtual);
+    puts(PG_IS_PRESENT(*page) ? "present " : "not present ");
+    puts(PG_IS_WRITEABLE(*page) ? "writeable " : "not writeable ");
+    puts(PG_IS_USERMODE(*page) ? "user " : "not user ");
     puts(" frame: ");
-    puth(page->frame);
+    puth(*page & 0xFFFFF000);
     puts(" virtual: ");
     puth(virtual);
     putc('\n');
@@ -217,107 +232,10 @@ void free_page(uint32_t virtual)
 {
     memcpy((void *)virtual, &free_stack_top, sizeof(free_stack_top));
 
-    page_t *page = get_page(virtual);
-    free_stack_top = (page->frame) << 12;
-    
+    uint32_t *page = get_page(virtual);
+    free_stack_top = *page & 0xFFFFF000;
+
     unmap_page(virtual);
-}
-
-static void clone_page_table(page_table_t *dest, const page_table_t *src)
-{
-    memset(dest, 0, sizeof(*dest));
-
-    for (uint32_t i = 0; i < PAGE_SIZE / 4 - 1; ++i) {
-        uint32_t physical = alloc_frame();
-        uint32_t frame = physical >> 12;
-
-        memcpy(&dest->pages[i], &src->pages[i], sizeof(page_t));
-        dest->pages[i].frame = frame;
-    }
-}
-
-void clone_address_space(address_space_t *dest, const address_space_t *src)
-{
-    asm volatile("cli");
-
-    /* puts("cloning address space @"); */
-    /* puth((uint32_t)src); */
-    /* puts("->"); */
-    /* puth((uint32_t)dest); */
-    /* putc('\n'); */
-
-    /* puts("dest pgdir @"); */
-    /* puth((uint32_t)dest->pgdir); */
-    /* putc('\n'); */
-    
-    memset(dest->pgdir, 0, sizeof(*(dest->pgdir)));
-
-    /* puts("zeroed memory...\n"); */
-
-    dest->prog_break = src->prog_break;
-    dest->stack_top = src->stack_top;
-
-    for (uint32_t i = 0; i < PAGE_SIZE / 4; ++i) {
-        page_table_t *ktable = kdirectory.tables[i];
-        page_table_t *srctable = src->pgdir->tables[i];
-
-        if (ktable == srctable) {
-            /* puts("linking page table: "); */
-            /* puth(i); */
-            /* puts(" @"); */
-            /* puth((uint32_t)src->pgdir->tables[i]); */
-            /* putc('\n'); */
-            dest->pgdir->tables[i] = srctable;
-        }
-        else if (srctable) {
-            /* puts("copying page table: "); */
-            /* puth(i); */
-            /* puts(" @"); */
-            /* puth((uint32_t)src->pgdir->tables[i]); */
-            /* putc('\n'); */
-
-            dest->pgdir->tables[i] = kmalloc(PAGE_SIZE);
-            clone_page_table(dest->pgdir->tables[i],
-                             src->pgdir->tables[i]);
-        }
-    }
-
-    puts("cloned address space!\n");
-
-    asm volatile("sti");
-}
-
-void switch_address_space(address_space_t *old, const address_space_t *new)
-{
-    page_directory_t *kdir = &kdirectory;
-
-    for (uint32_t dirindex = 0; dirindex < PAGE_SIZE / 4; ++dirindex) {
-        page_table_t *ktable = kdir->tables[dirindex];
-        page_table_t *currtable = currdirectory->tables[dirindex];
-        old->pgdir->tables[dirindex] = currtable;
-        
-        if (!ktable || (ktable == currtable)) {
-            /* puts("skipping table "); */
-            /* puth(dirindex); */
-            /* puts(" @"); */
-            /* puth((uint32_t)ktable); */
-            /* puts(ktable ? " (kernel)" : " (null)"); */
-            /* putc('\n'); */
-            continue;
-        }
-
-        /* puts("copying table "); */
-        /* puth(dirindex); */
-        /* puts(" @"); */
-        /* puth((uint32_t)ktable); */
-        /* putc('\n'); */
-
-        currdirectory->tables[dirindex] = new->pgdir->tables[dirindex];
-
-        for (uint32_t tblindex = 0; tblindex < PAGE_SIZE / 4; ++tblindex) {
-            flush_tlb((dirindex << 22) & (tblindex << 12));
-        }
-    }
 }
 
 static inline int
@@ -367,7 +285,7 @@ __attribute__((section (".text")))
 init_free_frame_stack(multiboot_info_t *mboot_info)
 {
     uint32_t *top = &free_stack_top;
-    top -= ((uint32_t)&KERNEL_VIRTUAL_OFFSET / sizeof(uint32_t));
+    top -= ((uint32_t)ld_virtual_offset / sizeof(uint32_t));
 
     *top = 0;
 
@@ -379,7 +297,7 @@ init_free_frame_stack(multiboot_info_t *mboot_info)
     }
 
     for_each_frame(address) {
-        if (address < (uint32_t)&kernel_physical_end) {
+        if (address < (uint32_t)ld_physical_end) {
             continue;
         }
 
@@ -394,23 +312,15 @@ init_free_frame_stack(multiboot_info_t *mboot_info)
     return count;
 }
 
-uint32_t top() {return free_stack_top;}
-uint32_t top_addr() {return (uint32_t)&free_stack_top;}
-
 static void page_fault_handler(registers_t *registers)
 {
     uint32_t address;
     asm volatile ("mov %%cr2, %0" : "=r"(address) : : );
 
-    puts("[PAGE FAULT] ");
-    puts("address: ");
-    puth(address);
-    puts(" (");
-    puts(registers->error & 0x1 ? "not present " : "");
-    puts(registers->error & 0x2 ? "writing " : "");
-    puts(registers->error & 0x4 ? "user " : "kernel ");
-    puts(registers->error & 0x8 ? "reserved " : "");
-    puts(")\n");
+    printf("[PAGE FAULT] address: %x (%s %s %s page)\n", address,
+           (registers->error & 0x4) ? "user" : "kernel",
+           (registers->error & 0x2) ? "write to" : "read from",
+           (registers->error & 0x1) ? "present" : "not present");
 }
 
 void init_paging()
@@ -418,5 +328,18 @@ void init_paging()
     register_interrupt_callback(0x0E, &page_fault_handler);
     flush_idt();
 
-    memcpy(&kdirectory, &kernel_page_directory, sizeof(kdirectory));
+    /* uint32_t virtual; */
+    /* for_each_frame(virtual) { */
+    /*     uint32_t *page = get_page(virtual); */
+    /*     uint32_t *pgtbl = (uint32_t*)get_page_directory_entry(virtual); */
+    /*     if (PG_IS_PRESENT(*pgtbl) && PG_IS_PRESENT(*page)) { */
+    /*         printf("page at %x: page ptr %x\n", virtual, page); */
+    /*         printf("page: %x pgtbl %x\n", *page, *pgtbl); */
+    /*     } */
+    /*     else { */
+    /*         //            printf("pgtbl not present: %x\n", *pgtbl); */
+    /*     } */
+    /* } */
+    
+    memcpy(&kdirectory, ld_page_directory, sizeof(kdirectory));
 }

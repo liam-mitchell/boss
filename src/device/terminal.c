@@ -3,11 +3,14 @@
 EXTERN
 #endif
 
-#include <stddef.h>
 #include "terminal.h"
+
+#include <stddef.h>
+
+#include "ldsymbol.h"
 #include "string.h"
 
-extern uint32_t kernel_screen;
+extern ldsymbol ld_screen;
 
 /* terminal dimensions */
 static const size_t VGA_WIDTH = 80;
@@ -70,7 +73,7 @@ void terminal_init()
     terminal_row = 0;
     terminal_column = 0;
     terminal_color = make_color(COLOR_LIGHT_GREY, COLOR_BLACK);
-    terminal_buffer = (uint16_t *)&kernel_screen;
+    terminal_buffer = (uint16_t *)ld_screen;
 
     for (size_t y = 0; y < VGA_HEIGHT; ++y) {
         for (size_t x = 0; x < VGA_WIDTH; ++x) {

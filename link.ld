@@ -1,21 +1,22 @@
 ENTRY(_start)
 
-KERNEL_BOOT_OFFSET = 1M;
-KERNEL_VIRTUAL_OFFSET = 0xC0000000; /* 3GB */
-KERNEL_VIRTUAL_START = KERNEL_BOOT_OFFSET + KERNEL_VIRTUAL_OFFSET;
-KERNEL_PAGE_NUMBER = KERNEL_VIRTUAL_OFFSET >> 22;
+ld_boot_offset = 1M;
+ld_virtual_offset = 0xC0000000; /* 3GB */
+ld_virtual_start = ld_boot_offset + ld_virtual_offset;
+ld_first_kernel_page = ld_virtual_offset >> 22;
+ld_num_temp_pages = 4;
 
 SECTIONS
 {
-	.boot KERNEL_BOOT_OFFSET : AT(KERNEL_BOOT_OFFSET)
+	.boot ld_boot_offset : AT(ld_boot_offset)
         {
-                kernel_phys_start = .;
+                ld_phys_start = .;
                 *(.boot)
                 . = ALIGN(4K);
-                kernel_boot_end = .;
+                ld_boot_end = .;
         }
 
-        .text kernel_boot_end + KERNEL_VIRTUAL_OFFSET : AT(kernel_boot_end)
+        .text ld_boot_end + ld_virtual_offset : AT(ld_boot_end)
         {
 		*(.multiboot)	
 		*(.text)
@@ -39,31 +40,40 @@ SECTIONS
 	}
         
         . = ALIGN(4K);
-        kernel_page_directory = .;
+        ld_page_directory = .;
         . += 4K;
 
         . = ALIGN(4K);
-        kernel_page_tables = .;
-        kernel_num_tables = (((0xFFFFFFFF - (KERNEL_VIRTUAL_START & 0xFFC00000)) + 1) / 0x400000) - 1;
-        . += kernel_num_tables * 4K;
+        ld_page_tables = .;
+        ld_num_tables = (((0xFFFFFFFF - (ld_virtual_start & 0xFFC00000)) + 1) / 0x400000) - 1;
+        . += ld_num_tables * 4K;
         
         . = ALIGN(4K);
-        tss_stack = .;
+        ld_tss_stack = .;
         . += 4K;
 
         . = ALIGN(4K);
-        kernel_screen = .;
+        ld_initrd = .;
         . += 4K;
 
         . = ALIGN(4K);
-        kernel_page_table_low = .;
+        ld_physical_end = . - ld_virtual_offset;
+        ld_virtual_end = .;
+
+        . = ALIGN(4K);
+        ld_screen = .;
         . += 4K;
 
         . = ALIGN(4K);
-        kernel_physical_end = . - KERNEL_VIRTUAL_OFFSET;
-        kernel_virtual_end = .;
+        ld_temp_pages = .;
+        . += ld_num_temp_pages * 4K;
+        ld_temp_pages_end = .;
 
         . = ALIGN(4K);
-        kernel_heap_start = .;
+        ld_page_table_low = .;
+        . += 4K;
+
+        . = ALIGN(4K);
+        ld_heap_start = .;
         . += 4K;
 }

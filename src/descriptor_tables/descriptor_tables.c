@@ -1,4 +1,5 @@
 #include "descriptor_tables.h"
+#include "ldsymbol.h"
 #include "memory.h"
 #include "terminal.h"
 #include "device_io.h"
@@ -7,8 +8,6 @@
 #define PIC1_D 0x21
 #define PIC2_C 0xA0
 #define PIC2_D 0xA1
-
-extern uint32_t KERNEL_VIRTUAL_OFFSET;
 
 typedef volatile struct tss {
     uint16_t link;
@@ -114,7 +113,7 @@ extern void irq13();
 extern void irq14();
 extern void irq15();
 
-extern uint32_t tss_stack;
+extern ldsymbol ld_tss_stack;
 
 gdt_entry_t gdt_entries[6];
 idt_entry_t idt_entries[256];
@@ -150,7 +149,7 @@ static void gdt_init()
     gdt_flush((uint32_t)&gdt_ptr);
 
     tss.ss = 0x10;
-    tss.esp = (uint32_t)&tss_stack;
+    tss.esp = (uint32_t)ld_tss_stack;
     tss.iopb_offset = sizeof(tss);
     load_task_register(0x28);
 }

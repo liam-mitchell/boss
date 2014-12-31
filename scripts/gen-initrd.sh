@@ -170,6 +170,7 @@ write-inodes() {
 
     for f in `find .`
     do
+        echo "[gen-initrd] Writing inode data for $f"
         offset=`write-inode $1 $2 $f $offset`
     done
 }
@@ -198,6 +199,7 @@ write-data() {
 write-datas() {
     for f in `find .`
     do
+        echo "[gen-initrd] Writing file data for $f"
         write-data $1 $f $2
     done
 }
@@ -206,14 +208,29 @@ list-files() {
     find . -mindepth 1
 }
 
-initdir=../initrd-out
-img=$initdir/initrd.img
-rm -rf $initdir
-mkdir $initdir
+initdir=`mktemp -d /tmp/initrd-out.XXX`
+
+while getopts "o:d:" opt;
+do
+    case $opt in
+        o)
+            img=$(realpath $OPTARG);;
+        d)
+            dir=$(realpath $OPTARG);;
+        \?)
+            echo "invalid option: $OPTARG";;
+    esac
+done              
+
+echo "[gen-initrd] Writing initrd image to $img"
+echo "[gen-initrd] Copying filesystem structure from $dir"
+
+cd $dir
 
 inodes=( $(list-files) )
 
 make-dirfiles $initdir $inodes
+>$img
 write-super $img
 write-inodes $img $initdir $inodes
 write-datas $img $initdir $inodes

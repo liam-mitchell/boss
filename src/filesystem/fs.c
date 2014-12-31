@@ -2,12 +2,15 @@
 
 #include "initrd.h"
 #include "kheap.h"
+#include "ldsymbol.h"
 #include "macros.h"
 #include "memory.h"
 #include "string.h"
 #include "vfs.h"
 
 #define INODE_MAX 1024
+
+extern ldsymbol ld_initrd;
 
 void mount(superblock_t *sb)
 {
@@ -33,9 +36,10 @@ void mount(superblock_t *sb)
     putc('\n');
 }
 
-void init_fs(uint32_t initrd_addr)
+void init_filesystem()
 {
-    mount(init_initrd(initrd_addr));
+    superblock_t *init = init_initrd((uint32_t)ld_initrd);
+    mount(init);
 }
 
 static const char *next_component(char *dest, const char *pathname)

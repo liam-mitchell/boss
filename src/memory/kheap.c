@@ -1,5 +1,7 @@
 #include "kheap.h"
+
 #include "errno.h"
+#include "ldsymbol.h"
 #include "macros.h"
 #include "mm.h"
 #include "memory.h"
@@ -13,7 +15,7 @@ typedef struct chunk {
 #define CHUNK_PTR(usr) ((void *)(usr) - sizeof(chunk_t))
 #define USER_PTR(chnk) ((void *)(chnk) + sizeof(chunk_t))
 
-extern uint32_t kernel_heap_start;
+extern ldsymbol ld_heap_start;
 static uint32_t kheap_top;
 static chunk_t *first_free_chunk;
 
@@ -252,7 +254,7 @@ void kfree(void *address)
 void init_kheap(void)
 {
     puts("Initializing kernel heap...\n");
-    kheap_top = next_page((uint32_t)&kernel_heap_start);
+    kheap_top = next_page((uint32_t)ld_heap_start);
     
     int err = alloc_page(kheap_top, 0, 1);
     if (err < 0) {

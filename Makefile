@@ -10,7 +10,7 @@ $(DEPENDS): $(HEADERS)
 	@for f in $(CSOURCES); \
 	do $(CC) $(CFLAGS) -MM $$f | \
 	sed "s:\(.*\)\(\.o\):$(OBJDIR)/\1\.c\2:g" >> $(DEPENDS); \
-	echo "[DEP] $$f"; \
+	echo "[DEP]    $$f"; \
 	done
 
 -include $(DEPENDS)
@@ -29,7 +29,7 @@ $(OBJDIR)/%.s.o: %.s
 
 initrd: $(OBJFILES)
 	@echo "[INITRD] $(GEN_INITRD)"
-	@cd $(INITRD) && $(GEN_INITRD)
+	@$(GEN_INITRD) -o $(ISODIR)/boot/initrd.img -d $(INITRD) > /dev/null
 
 iso: $(OBJFILES)
 	@echo "[ISO]    bin/kernel.iso"
@@ -44,4 +44,4 @@ clean:
 	@echo "[CLEAN]  $(BINARY)"
 	@if [ -f $(BINARY) ]; then rm $(BINARY); fi
 	@echo "[CLEAN]  $(OBJDIR)"
-	@rm -f $(OBJFILES) || true
+	@rm -f $(OBJDIR)/* || true

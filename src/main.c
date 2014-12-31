@@ -2,15 +2,13 @@
 // author: Liam Mitchell
 
 #include "descriptor_tables.h"
-#include "fork.h"
 #include "fs.h"
 #include "kheap.h"
 #include "macros.h"
 #include "mboot.h"
 #include "memory.h"
 #include "mm.h"
-#include "modules.h"
-#include "task.h"
+#include "printf.h"
 #include "terminal.h"
 #include "timer.h"
 #include "vfs.h"
@@ -30,7 +28,6 @@ extern uint32_t kernel_virtual_end;
 void kernel_main(multiboot_info_t *mboot, uint32_t magic)
 {
     terminal_init();
-    puts("Hello, world of OS development!\n");
 
     if (magic != 0x2BADB002) {
         puth(magic);
@@ -44,12 +41,6 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
         PANIC("No modules loaded!\n");
     }
 
-    puts("mboot->flags: ");
-    puth(mboot->flags);
-    putc('\n');
-    puts("mboot->mods_addr: ");
-    puth(mboot->mods_addr);
-    putc('\n');
     /* puts("module->mod_start: "); */
     /* puth(((module_t*)mboot->mods_addr)->mod_start); */
     /* puts("module->mod_end: "); */
@@ -62,8 +53,7 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     timer_init(50);
 
     init_kheap();
-
-    init_modules(mboot);
+    init_filesystem();
 
     /* file_t *placeholder = */
     /*     open_path("/init/bin/placeholder.txt", MODE_READ | MODE_WRITE); */
@@ -74,17 +64,15 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     /* void *buf = kmalloc(placeholder->length); */
     /* uint32_t len = vfs_read(placeholder, &placeholder->offset, placeholder->length, buf); */
 
-    /* puts("read placeholder.txt: "); */
-    /* puts("(offset "); */
-    /* puth(placeholder->offset); */
-    /* puts(" length "); */
-    /* puth(placeholder->length); */
-    /* puts(")\ndata: "); */
-    /* puts((char *)buf); */
-    /* putc('\n'); */
-    /* puts("read len: "); */
-    /* puth(len); */
-    /* putc('\n'); */
+    /* printf("read placeholder.txt:\n" */
+    /*        " offset: %x\n" */
+    /*        " length: %d\n" */
+    /*        " data: %s\n" */
+    /*        "\n read length: %d\n", */
+    /*        placeholder->offset, */
+    /*        placeholder->length, */
+    /*        (char *)buf, */
+    /*        len); */
 
     /* file_t *hello = */
     /*     open_path("/init/hello.txt", MODE_READ | MODE_WRITE); */
@@ -108,6 +96,9 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     /* puts("read len: "); */
     /* puth(len); */
     /* putc('\n'); */
+    printf("Hello, world of kernel development!\n");
+    printf("Printing an int: %d\n", 4);
+    printf("Printing a string: %s then a uint %u\n", "here's the string!", 4);
 }
 
 #ifdef __cplusplus

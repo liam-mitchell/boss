@@ -76,7 +76,7 @@ typedef struct file_ops {
 
 superblock_t *mounts;
 
-void init_fs(uint32_t initrd_addr);
+void init_filesystem();
 void mount(superblock_t *sb);
 
 file_t *open_path(const char *pathname, const uint8_t mode);

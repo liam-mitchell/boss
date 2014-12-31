@@ -29,6 +29,7 @@ DEPENDS := $(ROOT)/.depend
 GEN_INITRD := $(SCRIPTDIR)/gen-initrd.sh
 INITRD := $(SCRIPTDIR)/init
 INITRD_FILES := $(sort $(shell find $(INITRD)))
+INITRD_OUT := $(ISODIR)/boot/initrd.img
 
 BINARY := $(BINDIR)/kernel.bin
 ISO := $(BINDIR)/kernel.iso

@@ -2,7 +2,6 @@
 #include "interrupt.h"
 #include "terminal.h"
 #include "device_io.h"
-#include "task.h"
 
 uint32_t ticks = 0;
 
@@ -16,7 +15,6 @@ static void timer_callback(registers_t *registers)
         puts("Tick: ");
         putui(ticks);
         putc('\n');
-        /* switch_tasks(registers); */
     }
 }
 
