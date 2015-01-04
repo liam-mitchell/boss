@@ -29,7 +29,7 @@ $(OBJDIR)/%.s.o: %.s
 
 initrd: $(OBJFILES)
 	@echo "[INITRD] $(GEN_INITRD)"
-	@$(GEN_INITRD) -o $(ISODIR)/boot/initrd.img -d $(INITRD) > /dev/null
+	@$(GEN_INITRD) -o $(INITRD_OUT) -d $(INITRD) > /dev/null
 
 iso: $(OBJFILES)
 	@echo "[ISO]    bin/kernel.iso"
@@ -44,4 +44,5 @@ clean:
 	@echo "[CLEAN]  $(BINARY)"
 	@if [ -f $(BINARY) ]; then rm $(BINARY); fi
 	@echo "[CLEAN]  $(OBJDIR)"
-	@rm -f $(OBJDIR)/* || true
+	@echo "[CLEAN]  $(INITRD_OUT)"
+	@rm -f $(OBJDIR)/* $(INITRD_OUT) || true

@@ -31,7 +31,7 @@ char *strncpy(char *dest, const char *src, size_t sz)
 {
     char *ret = dest;
 
-    while (*src && sz > 0) {
+    while (*src && (sz > 0)) {
         *dest = *src;
         ++dest;
         ++src;
@@ -40,6 +40,7 @@ char *strncpy(char *dest, const char *src, size_t sz)
 
     while (sz > 0) {
         *dest++ = '\0';
+        --sz;
     }
 
     *dest = '\0';

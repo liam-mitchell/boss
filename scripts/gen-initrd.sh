@@ -108,7 +108,7 @@ add-direntry() {
     
     i=$((${#entry} % 4))
     
-    while [ $i -lt 4 ] && [ $i -gt 0 ]
+    while [ $i -lt 4 ]
     do
         echo -ne "\\0" >> $dirfile
         i=$(($i + 1))

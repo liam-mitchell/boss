@@ -27,25 +27,12 @@
 #define MEM_NVS 4
 #define MEM_BAD 5
 
-#define PG_PRESENT (1 << 0)
-#define PG_WRITEABLE (1 << 1)
-#define PG_USER (1 << 2)
-#define PG_ACCESSED (1 << 3)
-#define PG_DIRTY (1 << 4)
-
-#define PG_IS_PRESENT(p) ((p) & PG_PRESENT)
-#define PG_IS_WRITEABLE(p) ((p) & PG_WRITEABLE)
-#define PG_IS_USERMODE(p) ((p) & PG_USER)
-#define PG_IS_ACCESSED(p) ((p) & PG_ACCESSED)
-#define PG_IS_DIRTY(p) ((p) & PG_DIRTY)
-
 extern ldsymbol ld_virtual_offset;
 
 extern ldsymbol ld_page_directory;
 extern ldsymbol ld_page_tables;    
 extern ldsymbol ld_temp_pages;
 extern ldsymbol ld_temp_pages_end;
-extern ldsymbol ld_num_temp_pages;
 extern ldsymbol ld_virtual_end;
 extern ldsymbol ld_physical_end;
 
@@ -55,7 +42,6 @@ extern void idt_flush();
 
 static int map_page(uint32_t virtual, uint32_t physical,
                     uint8_t readonly, uint8_t kernel);
-static void unmap_page();
 
 uint32_t **get_page_directory_entry(uint32_t virtual)
 {
@@ -84,10 +70,6 @@ uint32_t map_physical(uint32_t physical)
                 continue;
             }
 
-            printf("Mapping physical address %x to temp pages at %x\n", physical, virtual);
-            printf("page: %x at %x\n", *page, (uint32_t)page);
-            printf("first byte of page: %d\n", *(char *)virtual);
-
             uint32_t offset = physical & 0xFFF;
             return virtual + offset;
         }
@@ -108,12 +90,12 @@ uint32_t alloc_frame()
     return ret;
 }
 
-static void flush_tlb(uint32_t virtual)
+void flush_tlb(uint32_t virtual)
 {
     asm volatile ("invlpg (%0)" : : "r"(virtual) : );
 }
 
-static void unmap_page(uint32_t virtual)
+void unmap_page(uint32_t virtual)
 {
     uint32_t **direntry = get_page_directory_entry(virtual);
 
@@ -128,8 +110,6 @@ static void unmap_page(uint32_t virtual)
     }
 
     *page = 0;
-
-    printf("unmapped page at virtual address %x\n", virtual);
     flush_tlb(virtual);
 }
 
@@ -140,6 +120,10 @@ static int map_page(uint32_t virtual, uint32_t physical,
 
     if (!PG_IS_PRESENT((uint32_t)*direntry)) {
         uint32_t frame = alloc_frame();
+        if (frame == 0) {
+            return -ENOMEM;
+        }
+
         *direntry =
             (uint32_t *)((frame & 0xFFFFF000)
                          | PG_USER
@@ -147,9 +131,6 @@ static int map_page(uint32_t virtual, uint32_t physical,
                          | PG_WRITEABLE);
 
         puts("Allocated a new directory entry\n");
-        if (direntry == NULL) {
-            return -ENOMEM;
-        }
 
         memset(get_page_table(virtual), 0, PAGE_SIZE);
     }
@@ -184,9 +165,7 @@ int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
         return -ENOMEM;
     }
 
-    puts("mapping page...\n");
     map_page(virtual, physical, readonly, kernel);
-    puts("mapped page! ");
 
     uint32_t *page = get_page(virtual);
     puts(PG_IS_PRESENT(*page) ? "present " : "not present ");

@@ -3,12 +3,14 @@
 
 #include "descriptor_tables.h"
 #include "fs.h"
+#include "keyboard.h"
 #include "kheap.h"
 #include "macros.h"
 #include "mboot.h"
 #include "memory.h"
 #include "mm.h"
 #include "printf.h"
+#include "task.h"
 #include "terminal.h"
 #include "timer.h"
 #include "vfs.h"
@@ -54,6 +56,8 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
 
     init_kheap();
     init_filesystem();
+    init_keyboard();
+    init_scheduler();
 
     /* file_t *placeholder = */
     /*     open_path("/init/bin/placeholder.txt", MODE_READ | MODE_WRITE); */
@@ -99,6 +103,17 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     printf("Hello, world of kernel development!\n");
     printf("Printing an int: %d\n", 4);
     printf("Printing a string: %s then a uint %u\n", "here's the string!", 4);
+
+    /* file_t *test = open_path("/init/bin/test.s", MODE_READ); */
+
+    /* char *buf = kmalloc(test->length); */
+    /* uint32_t len = vfs_read(test, &test->offset, test->length, buf); */
+
+    /* printf("data from test:\n"); */
+    /* for (uint32_t i = 0; i < len; ++i) { */
+    /*     printf("%c", buf[i]); */
+    /* } */
+    /* printf("end test file\n"); */
 }
 
 #ifdef __cplusplus

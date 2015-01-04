@@ -5,6 +5,7 @@
 #include "ldsymbol.h"
 #include "macros.h"
 #include "memory.h"
+#include "printf.h"
 #include "string.h"
 #include "vfs.h"
 
@@ -74,12 +75,14 @@ file_t *open_path(const char *pathname, const uint8_t mode)
         return NULL;
     }
 
-    char component[NAME_MAX];
-    memset(component, 0, NAME_MAX);
+    char component[NAME_MAX] = { 0 };
     pathname = next_component(component, pathname);
 
+    printf("found first component %s\npathname now %s\n", component, pathname);
+    
     superblock_t *mount;
     for (mount = mounts; mount != NULL; mount = mount->next) {
+        printf("checking against mountpoint %s\n", mount->name);
         if (strcmp(component, mount->name) == 0) {
             break;
         }

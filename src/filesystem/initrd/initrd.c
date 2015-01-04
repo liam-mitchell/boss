@@ -5,6 +5,7 @@
 #include "kheap.h"
 #include "macros.h"
 #include "memory.h"
+#include "printf.h"
 #include "string.h"
 
 #include <stdint.h>
@@ -93,21 +94,17 @@ static uint32_t initrd_lookup(inode_t *dir, char *name)
         memcpy(&ino, dir_data, sizeof(ino));
         dir_name = dir_data + sizeof(ino);
 
-        puts("checking name ");
-        puts(name);
-        puts(" against direntry ");
-        puts(dir_name);
-        putc('\n');
-        
-        if (strcmp(dir_name, name) == 0) {
+        printf("checking filename %s (length %d)\n"
+               " against direntry with name %s\n",
+               name, strlen(name), dir_name);
+
+        if (strncmp(dir_name, name, strlen(name)) == 0) {
             memcpy(&ret, dir_data, sizeof(uint32_t));
             break;
         }
 
-        dir_data += sizeof(ino) + strlen(dir_name);
-        if ((uint32_t)dir_data & 0xFFFFFFFC) {
-            dir_data = (void *)ALIGN((uint32_t)dir_data, 4);
-        }
+        dir_data += sizeof(ino) + strlen(name);
+        dir_data = (void *)ALIGN((uint32_t)dir_data, 4);
     }
 
     return ret;

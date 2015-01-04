@@ -8,6 +8,19 @@
 #define DIRINDEX(virtual) ((virtual) >> 22)
 #define TBLINDEX(virtual) (((virtual) >> 12) & 0x3FF)
 
+#define PG_PRESENT (1 << 0)
+#define PG_WRITEABLE (1 << 1)
+#define PG_USER (1 << 2)
+#define PG_ACCESSED (1 << 3)
+#define PG_DIRTY (1 << 4)
+
+#define PG_FRAME(p) ((p) & ~0xFFF)
+#define PG_IS_PRESENT(p) ((p) & PG_PRESENT)
+#define PG_IS_WRITEABLE(p) ((p) & PG_WRITEABLE)
+#define PG_IS_USERMODE(p) ((p) & PG_USER)
+#define PG_IS_ACCESSED(p) ((p) & PG_ACCESSED)
+#define PG_IS_DIRTY(p) ((p) & PG_DIRTY)
+
 #define for_each_frame(address)                                                 \
     for (address = 0;                                                           \
          address < 0xFFFFF000;                                                  \
@@ -46,6 +59,9 @@ uint32_t *get_page_table(uint32_t virtual);
 uint32_t *get_page(uint32_t virtual);
 
 uint32_t map_physical(uint32_t physical);
+void unmap_page(uint32_t virtual);
+
+void flush_tlb(uint32_t virtual);
 
 void init_paging();
 

@@ -4,10 +4,16 @@
 #include "address-space.h"
 #include "interrupt.h"
 
+#define TASK_READY 0
+#define TASK_BLOCKED 1
+#define TASK_RUNNING 2
+#define TASK_DEAD 3
+
 typedef struct task {
     registers_t regs;
     address_space_t *as;
     uint32_t pid;
+    uint32_t state;
     struct task *next;
 } task_t;
 
@@ -15,5 +21,6 @@ struct task *run_queue;
 struct task *idle;
 
 void init_scheduler();
+void exec(const char *path);
 
 #endif
