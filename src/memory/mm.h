@@ -1,6 +1,9 @@
 #ifndef __MM_H_
 #define __MM_H_
 
+#include "bool.h"
+#include "compiler.h"
+
 #include <stdint.h>
 
 #define PAGE_SIZE 0x1000
@@ -53,6 +56,8 @@ int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel);
 int alloc_pages(uint32_t virtual, uint8_t readonly,
                 uint8_t kernel, uint32_t num);
 void free_page(uint32_t virtual);
+void set_page_attributes(uint32_t *page, bool present,
+                         bool writeable, bool user);
 
 uint32_t **get_page_directory_entry(uint32_t virtual);
 uint32_t *get_page_table(uint32_t virtual);
@@ -60,6 +65,8 @@ uint32_t *get_page(uint32_t virtual);
 
 uint32_t map_physical(uint32_t physical);
 void unmap_page(uint32_t virtual);
+
+bool check_user_ptr(void __user *ptr);
 
 void flush_tlb(uint32_t virtual);
 

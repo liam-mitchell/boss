@@ -1,44 +1,48 @@
 #include "device_io.h"
 
-void outb(uint16_t port, uint8_t b)
-{
-	asm volatile ("outb %%al, %%dx" : : "d" (port), "a" (b));
-}
+#include "printf.h"
 
-void outw(uint16_t port, uint16_t w)
-{
-	asm volatile ( "outw %0, %1" : : "a"(w), "dN"(port) );
-}
+/* extern void outbyte(uint16_t, uint8_t); */
 
-void outl(uint16_t port, uint32_t l)
-{
-	asm volatile ( "outl %0, %1" : : "a"(l), "dN"(port) );
-}
+/* void outb(uint16_t port, uint8_t b) */
+/* { */
+/*     /\* outbyte(port, b); *\/ */
+/*     /\* asm volatile ("outb %%al, %%dx" : : "d" (port), "a" (b)); *\/ */
+/*     /\* asm volatile ("outb %1, %0" : : "r"(port), "r"(b)); *\/ */
+/* } */
 
-uint8_t inb(uint16_t port)
-{
-	uint8_t b;
-	asm volatile ( "inb %%dx, %%al" : "=a" (b) : "d" (port) );
-	return b;
-}
+/* void outw(uint16_t port, uint16_t w) */
+/* { */
+/*     asm volatile ( "outw %0, %1" : : "a"(w), "dN"(port) ); */
+/* } */
 
-uint16_t inw(uint16_t port)
-{
-	uint16_t w;
-	asm volatile ( "inw %1, %0" : "=a"(w) : "Nd"(port) );
-	return w;
-}
+/* void outl(uint16_t port, uint32_t l) */
+/* { */
+/*     asm volatile ( "outl %0, %1" : : "a"(l), "dN"(port) ); */
+/* } */
 
-uint32_t inl(uint16_t port)
-{
-	uint32_t l;
-	asm volatile ( "inl %1, %0" : "=a"(l) : "Nd"(port) );
-	return l;
-}
+/* uint8_t inb(uint16_t port) */
+/* { */
+/*     uint8_t b; */
+/*     asm volatile ( "inb %%dx, %%al" : "=a" (b) : "d" (port) ); */
+/*     return b; */
+/* } */
+
+/* uint16_t inw(uint16_t port) */
+/* { */
+/*     uint16_t w; */
+/*     asm volatile ( "inw %1, %0" : "=a"(w) : "Nd"(port) ); */
+/*     return w; */
+/* } */
+
+/* uint32_t inl(uint16_t port) */
+/* { */
+/*     uint32_t l; */
+/*     asm volatile ( "inl %1, %0" : "=a"(l) : "Nd"(port) ); */
+/*     return l; */
+/* } */
 
 void io_wait()
 {
-	asm volatile ( "jmp 1f\n\t"
-				   "1:jmp 2f\n\t"
-				   "2:" );
+    outb(0x80, 0);
 }

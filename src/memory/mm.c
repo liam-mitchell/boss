@@ -1,5 +1,6 @@
 #include "mm.h"
 
+#include "bits.h"
 #include "descriptor_tables.h"
 #include "errno.h"
 #include "interrupt.h"
@@ -27,6 +28,12 @@
 #define MEM_NVS 4
 #define MEM_BAD 5
 
+#define MEM_GEN 0
+#define MEM_DMA 1
+
+#define PMM_DMA_SIZE 1 * MBYTE
+#define PMM_DMA_NPAGES (PMM_DMA_SIZE / PAGE_SIZE)
+
 extern ldsymbol ld_virtual_offset;
 
 extern ldsymbol ld_page_directory;
@@ -37,11 +44,32 @@ extern ldsymbol ld_virtual_end;
 extern ldsymbol ld_physical_end;
 
 static uint32_t free_stack_top;
+/* static uint32_t dma_bitmap[PMM_DMA_NPAGES / 32]; */
 
 extern void idt_flush();
 
 static int map_page(uint32_t virtual, uint32_t physical,
                     uint8_t readonly, uint8_t kernel);
+
+/* static bool dma_set_frame(uint32_t virtual, bool allocated) */
+/* { */
+/*     uint32_t index = virtual / 32; */
+/*     uint32_t bit = virtual % 32; */
+
+/*     if (allocated) { */
+/*         SET_BIT(dma_bitmap[index], bit); */
+/*     } */
+/*     else { */
+/*         CLR_BIT(dma_bitmap[index], bit); */
+/*     } */
+/* } */
+
+/* static bool dma_test_frame(uint32_t virtual) */
+/* { */
+/*     uint32_t index = virtual / 32; */
+/*     uint32_t bit = virtual % 32; */
+/*     return TST_BIT(dma_bitmap[index], bit); */
+/* } */
 
 uint32_t **get_page_directory_entry(uint32_t virtual)
 {
@@ -113,6 +141,19 @@ void unmap_page(uint32_t virtual)
     flush_tlb(virtual);
 }
 
+void set_page_attributes(uint32_t *page, bool present,
+                         bool writeable, bool user)
+{
+    if (writeable) *page |= PG_WRITEABLE;
+    else *page &= ~PG_WRITEABLE;
+
+    if (user) *page |= PG_USER;
+    else *page &= ~PG_USER;
+
+    if (present) *page |= PG_PRESENT;
+    else *page &= ~PG_PRESENT;
+}
+
 static int map_page(uint32_t virtual, uint32_t physical,
                     uint8_t readonly, uint8_t kernel)
 {
@@ -141,16 +182,17 @@ static int map_page(uint32_t virtual, uint32_t physical,
         return -EINVAL;
     }
 
-    *page |= PG_PRESENT;
+    /* *page |= PG_PRESENT; */
 
-    if (!readonly) {
-        *page |= PG_WRITEABLE;
-    }
+    /* if (!readonly) { */
+    /*     *page |= PG_WRITEABLE; */
+    /* } */
 
-    if (!kernel) {
-        *page |= PG_USER;
-    }
+    /* if (!kernel) { */
+    /*     *page |= PG_USER; */
+    /* } */
 
+    set_page_attributes(page, true, !readonly, !kernel);
     *page |= physical & 0xFFFFF000;
 
     flush_tlb(virtual);
@@ -166,16 +208,6 @@ int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
     }
 
     map_page(virtual, physical, readonly, kernel);
-
-    uint32_t *page = get_page(virtual);
-    puts(PG_IS_PRESENT(*page) ? "present " : "not present ");
-    puts(PG_IS_WRITEABLE(*page) ? "writeable " : "not writeable ");
-    puts(PG_IS_USERMODE(*page) ? "user " : "not user ");
-    puts(" frame: ");
-    puth(*page & 0xFFFFF000);
-    puts(" virtual: ");
-    puth(virtual);
-    putc('\n');
     
     return 1;
 }
@@ -217,8 +249,23 @@ void free_page(uint32_t virtual)
     unmap_page(virtual);
 }
 
+bool check_user_ptr(void __user *ptr)
+{
+    uint32_t *pde = (uint32_t *)get_page_directory_entry((uint32_t)ptr);
+    if (!PG_IS_PRESENT(*pde)) {
+        return false;
+    }
+
+    uint32_t *page = get_page((uint32_t)ptr);
+    if (!PG_IS_PRESENT(*page) || !PG_IS_USERMODE(*page)) {
+        return false;
+    }
+
+    return true;
+}
+
 static inline int
-__attribute__((section(".boot")))
+/* __section(".boot") - apparently not necessary?... */
 mem_range_is_free(multiboot_info_t *mboot_info,
                   uint32_t start, uint32_t end)
 {
@@ -251,6 +298,11 @@ mem_range_is_free(multiboot_info_t *mboot_info,
     return 0;
 }
 
+/* uint32_t init_pmm_dma(multiboot_info_t *mboot) */
+/* { */
+    
+/* } */
+
 /**
  * Initialize the free frame stack by embedding a pointer to the next
  * free frame in the first word of of each free frame
@@ -260,13 +312,18 @@ mem_range_is_free(multiboot_info_t *mboot_info,
  * bytes of memory for the physical memory manager total!
  */
 uint32_t
-__attribute__((section (".text")))
+/* __section(".text") - also apparently unnecessary?... */
 init_free_frame_stack(multiboot_info_t *mboot_info)
 {
     uint32_t *top = &free_stack_top;
     top -= ((uint32_t)ld_virtual_offset / sizeof(uint32_t));
-
     *top = 0;
+
+    /* uint32_t *bitmap = dma_bitmap; */
+    /* bitmap -= ((uint32_t)ld_virtual_offset / sizeof(uint32_t)); */
+
+    uint32_t dma_start = align((uint32_t)ld_physical_end, PAGE_SIZE);
+    /* uint32_t dma_end = dma_start + PMM_DMA_SIZE; */
 
     uint32_t address;
     uint32_t count = 0;
@@ -276,7 +333,11 @@ init_free_frame_stack(multiboot_info_t *mboot_info)
     }
 
     for_each_frame(address) {
-        if (address < (uint32_t)ld_physical_end) {
+        /* if (address < (uint32_t)ld_physical_end) { */
+        /*     continue; */
+        /* } */
+
+        if (address < dma_start) {
             continue;
         }
 

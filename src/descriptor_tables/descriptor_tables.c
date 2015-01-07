@@ -112,6 +112,7 @@ extern void irq12();
 extern void irq13();
 extern void irq14();
 extern void irq15();
+extern void isr128();
 
 extern ldsymbol ld_tss_stack;
 
@@ -148,8 +149,8 @@ static void gdt_init()
 
     gdt_flush((uint32_t)&gdt_ptr);
 
-    tss.ss = 0x10;
-    tss.esp = (uint32_t)ld_tss_stack;
+    tss.ss0 = 0x10;
+    tss.esp0 = (uint32_t)ld_tss_stack + 4092;
     tss.iopb_offset = sizeof(tss);
     load_task_register(0x28);
 }
@@ -210,6 +211,8 @@ static void idt_init()
     idt_set_gate(45, (uint32_t)irq13, 0x08, 0x8E);
     idt_set_gate(46, (uint32_t)irq14, 0x08, 0x8E);
     idt_set_gate(47, (uint32_t)irq15, 0x08, 0x8E);
+
+    idt_set_gate(0x80, (uint32_t)isr128, 0x0B, 0xEE);
 
     idt_flush((uint32_t)&idt_ptr);
     puts("IDT flushed.\n");

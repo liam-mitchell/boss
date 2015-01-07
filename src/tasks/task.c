@@ -2,6 +2,7 @@
 
 #include "algorithm.h"
 #include "bool.h"
+#include "descriptor_tables.h"
 #include "kheap.h"
 #include "ldsymbol.h"
 #include "memory.h"
@@ -51,8 +52,6 @@ static task_t *task_dequeue()
 
 static void switch_address_space(task_t *task)
 {
-    printf("Switching address spaces...\n");
-
     asm volatile("cli");
 
     for (uint32_t virtual = 0;
@@ -63,23 +62,21 @@ static void switch_address_space(task_t *task)
         uint32_t new_pde = (uint32_t)task->as->pgdir[DIRINDEX(virtual)];
 
         if (PG_FRAME(*pde) != PG_FRAME(new_pde)) {
-            printf(" pde changing: %x to %x\n", *pde, new_pde);
             *pde = new_pde;
             flush_tlb(virtual);
         }
 
         if (PG_IS_PRESENT(*pde)) {
             uint32_t *new_pt = (uint32_t *)map_physical(new_pde & ~0xFFF);
-            uint32_t *pg = get_page(virtual);
-            uint32_t new_pg = new_pt[TBLINDEX(virtual)];
-
             if (!new_pt) {
                 PANIC("unable to map new page table");
             }
 
-            if (PG_IS_PRESENT(*pg))
-            {
-                printf(" pte changing: %x to %x\n", *pg, new_pg);
+            uint32_t *pg = get_page(virtual);
+            uint32_t new_pg = new_pt[TBLINDEX(virtual)];
+
+
+            if (PG_FRAME(*pg) != PG_FRAME(new_pg)) {
                 *pg = new_pg;
                 flush_tlb(virtual);
             }
@@ -125,12 +122,7 @@ static void switch_tasks(registers_t *regs)
 
     task_t *old = task_dequeue();
     print_regs(regs, "switching tasks - old:");
-    if (old->state == TASK_READY) {
-        old->state = TASK_RUNNING;
-    }
-    else {
-        old->regs = *regs;
-    }
+    old->regs = *regs;
 
     task_enqueue(old);
 
@@ -158,40 +150,27 @@ void init_scheduler()
     exec("/init/bin/test");
 }
 
-static void as_map_page(address_space_t *as, uint32_t virtual,
-                        bool readonly, bool kernel)
+static void as_alloc_page(address_space_t *as, uint32_t virtual,
+                          bool readonly, bool kernel)
 {
     uint32_t *pde = (uint32_t *)&as->pgdir[DIRINDEX(virtual)];
     if (!PG_IS_PRESENT(*pde)) {
-        *pde = alloc_frame();
-
-        if (!readonly) {
-            *pde |= PG_WRITEABLE;
-        }
-        if (!kernel) {
-            *pde |= PG_USER;
-        }
-
-        *pde |= PG_PRESENT;
-        printf("mapped pde in as: %x\n", *pde);
+        *pde = alloc_frame() | PG_USER | PG_PRESENT | PG_WRITEABLE;
     }
 
     uint32_t *pt = (uint32_t *)(map_physical(*pde) & ~0xFFF);
     uint32_t *page = &pt[TBLINDEX(virtual)];
-    *page = alloc_frame() | PG_USER | PG_PRESENT | PG_WRITEABLE | PG_PRESENT;
-    printf("mapped page in as: %x (pt @%x pg @%x)\n", *page, pt, page);
+
+    *page = alloc_frame();
+    set_page_attributes(page, true, !readonly, !kernel);
 
     unmap_page((uint32_t)pt);
 }
 
 static void map_data(address_space_t *as, uint32_t len, void *data)
 {
-    for (uint32_t i = 0; i < len; ++i) {
-        printf("mapping data: %d\n", ((char *)data)[i]);
-    }
-
     for (uint32_t virtual = 0; virtual < len; virtual += PAGE_SIZE) {
-        as_map_page(as, virtual, false, false);
+        as_alloc_page(as, virtual, false, false);
 
         uint32_t *pt =
             (uint32_t *)map_physical(PG_FRAME((uint32_t)as->pgdir[DIRINDEX(virtual)]));
@@ -208,11 +187,15 @@ static void map_data(address_space_t *as, uint32_t len, void *data)
 
 static void map_stack(address_space_t *as)
 {
-    as_map_page(as, (uint32_t)ld_virtual_offset - 4, false, false);
+    as_alloc_page(as, (uint32_t)ld_virtual_offset - 4, false, false);
 }
 
 static void usermode_jump(task_t *task)
 {
+    printf("usermode jumping to eip %x\n"
+           "first word: %x\n"
+           "second word: %x\n",
+           task->regs.eip, *(uint32_t *)task->regs.eip, *(uint32_t *)(task->regs.eip + 4));
     asm volatile (".intel_syntax noprefix\n\t"
                   "cli\n\t"
                   "mov ax, 0x23\n\t"
@@ -222,7 +205,12 @@ static void usermode_jump(task_t *task)
                   "mov gs, ax\n\t"
                   "push %0\n\t"
                   "push %1\n\t"
+
                   "pushf\n\t"
+                  "pop eax\n\t"
+                  "or eax, 0x200\n\t"
+                  "push eax\n\t"
+
                   "push %2\n\t"
                   "push %3\n\t"
                   /* "pop eax\n\t" */
@@ -260,20 +248,12 @@ void exec(const char *path)
         return;
     }
 
-    for (uint32_t i = 0; i < len; ++i) {
-        printf("file data %d: %x\n", i, ((char *)data)[i]);
-    }
-
     run_queue->as = alloc_address_space();
     map_data(run_queue->as, len, data);
     map_stack(run_queue->as);
 
     init_exec_registers(&run_queue->regs);
 
-    run_queue->state = TASK_READY;
-
-    printf("jumping to usermode...\n");
-    print_regs(&run_queue->regs, "task regs");
     switch_address_space(run_queue);
     usermode_jump(run_queue);
 }

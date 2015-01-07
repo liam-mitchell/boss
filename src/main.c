@@ -9,7 +9,9 @@
 #include "mboot.h"
 #include "memory.h"
 #include "mm.h"
+#include "pci.h"
 #include "printf.h"
+#include "syscalls.h"
 #include "task.h"
 #include "terminal.h"
 #include "timer.h"
@@ -57,8 +59,10 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     init_kheap();
     init_filesystem();
     init_keyboard();
+    init_syscalls();
+    init_pci();
     init_scheduler();
-
+    
     /* file_t *placeholder = */
     /*     open_path("/init/bin/placeholder.txt", MODE_READ | MODE_WRITE); */
     /* puts("placeholder->ino: "); */
@@ -100,9 +104,6 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     /* puts("read len: "); */
     /* puth(len); */
     /* putc('\n'); */
-    printf("Hello, world of kernel development!\n");
-    printf("Printing an int: %d\n", 4);
-    printf("Printing a string: %s then a uint %u\n", "here's the string!", 4);
 
     /* file_t *test = open_path("/init/bin/test.s", MODE_READ); */
 

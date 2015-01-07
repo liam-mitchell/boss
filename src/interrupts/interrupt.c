@@ -1,6 +1,7 @@
 #include "interrupt.h"
-#include "terminal.h"
+
 #include "device_io.h"
+#include "printf.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,12 +11,11 @@ interrupt_callback callbacks[256];
 
 void interrupt_handler(registers_t *registers)
 {
-    puts("recieved interrupt: ");
-    puth(registers->interrupt);
-    putc('\n');
-
+    printf("Recieved interrupt %x (%d)\n", registers->interrupt, registers->interrupt);
+    
     if (callbacks[registers->interrupt] != NULL) {
         interrupt_callback cb = callbacks[registers->interrupt];
+        printf("Calling callback @%x\n", cb);
         cb(registers);
     }
 }
@@ -33,11 +33,8 @@ void irq_handler(registers_t *registers)
 
 void register_interrupt_callback(uint8_t n, interrupt_callback cb)
 {
-	puts("registering callback: ");
-	puth((uint32_t)n);
-	putc('\n');
-	callbacks[n] = cb;
-	puts("callback registered.\n");
+    printf("Registering callback %x (%d)\n", n, n);
+    callbacks[n] = cb;
 }
 
 #ifdef __cplusplus

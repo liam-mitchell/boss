@@ -1,9 +1,7 @@
 #ifndef __TERMINAL_H_
 #define __TERMINAL_H_
 
-#ifndef __cplusplus
-#include <stdbool.h>
-#endif
+#include "bool.h"
 
 #include <stddef.h>
 #include <stdint.h>

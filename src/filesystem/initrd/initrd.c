@@ -204,13 +204,13 @@ superblock_t *init_initrd(uint32_t start)
         puth(initrd_files[i].flags);
         putc('\n');
 
-        if (initrd_files[i].flags == FS_FILE) {
-            char buf[NAME_MAX];
-            strncpy(buf, (char *)initrd_start + initrd_files[i].offset, initrd_files[i].length);
-            puts("file data: ");
-            puts(buf);
-            putc('\n');
-        }
+        /* if (initrd_files[i].flags == FS_FILE) { */
+        /*     char buf[NAME_MAX]; */
+        /*     strncpy(buf, (char *)initrd_start + initrd_files[i].offset, initrd_files[i].length); */
+        /*     puts("file data: "); */
+        /*     puts(buf); */
+        /*     putc('\n'); */
+        /* } */
         
         start += sizeof(initrd_file_t);
     }
