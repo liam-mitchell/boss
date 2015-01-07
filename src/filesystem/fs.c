@@ -62,15 +62,6 @@ static const char *next_component(char *dest, const char *pathname)
 file_t *open_path(const char *pathname, const uint8_t mode)
 {
     const char *pathname_end = pathname + strlen(pathname);
-    
-    puts("opening path: ");
-    puts(pathname);
-    putc('\n');
-
-    puts("strlen(pathname): ");
-    puti(strlen(pathname));
-    putc('\n');
-
     if (*pathname++ != '/') {
         return NULL;
     }
@@ -78,11 +69,8 @@ file_t *open_path(const char *pathname, const uint8_t mode)
     char component[NAME_MAX] = { 0 };
     pathname = next_component(component, pathname);
 
-    printf("found first component %s\npathname now %s\n", component, pathname);
-    
     superblock_t *mount;
     for (mount = mounts; mount != NULL; mount = mount->next) {
-        printf("checking against mountpoint %s\n", mount->name);
         if (strcmp(component, mount->name) == 0) {
             break;
         }
@@ -92,45 +80,26 @@ file_t *open_path(const char *pathname, const uint8_t mode)
         return NULL;
     }
 
-    puts("opened path on mountpoint: ");
-    puts(mount->name);
-    puts(" ino ");
-    puti(mount->mount->ino);
-    putc('\n');
-
     inode_t *inode = mount->mount;
 
     while (pathname < pathname_end) {
         pathname = next_component(component, pathname);
-
-        puts("pathname now: ");
-        puts(pathname);
-        putc('\n');
-
-        puts("looking up component ");
-        puts(component);
-        puts(" in inode ");
-        puti(inode->ino);
-        putc('\n');
-
         uint32_t ino = vfs_lookup(inode, component);
 
         if (ino == 0) {
             return NULL;
         }
 
-        inode = kzalloc(sizeof(*inode));
+        if (inode != mount->mount) {
+            kfree(inode);
+        }
+
+        inode = kzalloc(MEM_GEN, sizeof(*inode));
         inode->ino = ino;
         vfs_read_inode(mount, inode);
-
-        puts("found inode ");
-        puti(ino);
-        puts(" flags: ");
-        puth(inode->flags);
-        putc('\n');
     }
 
-    file_t *file = kzalloc(sizeof(*file));
+    file_t *file = kzalloc(MEM_GEN, sizeof(*file));
     vfs_open(file, inode, mode);
     return file;
 }

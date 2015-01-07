@@ -6,9 +6,10 @@
 #include "kheap.h"
 #include "ldsymbol.h"
 #include "memory.h"
-#include "mm.h"
+#include "pmm.h"
 #include "printf.h"
 #include "vfs.h"
+#include "vmm.h"
 
 extern ldsymbol ld_virtual_offset;
 
@@ -18,7 +19,7 @@ static uint32_t next_pid;
 
 static task_t *alloc_task()
 {
-    task_t *task = kzalloc(sizeof(*task));
+    task_t *task = kzalloc(MEM_GEN, sizeof(*task));
     task->as = alloc_address_space();
     task->pid = next_pid++;
     return task;
@@ -239,7 +240,7 @@ void init_exec_registers(registers_t *regs)
 void exec(const char *path)
 {
     file_t *binary = open_path(path, MODE_READ);
-    void *data = kmalloc(binary->length);
+    void *data = kmalloc(MEM_GEN, binary->length);
     uint32_t len = vfs_read(binary, &binary->offset, binary->length, data);
 
     if (len < binary->length) {
@@ -251,8 +252,9 @@ void exec(const char *path)
     run_queue->as = alloc_address_space();
     map_data(run_queue->as, len, data);
     map_stack(run_queue->as);
-
     init_exec_registers(&run_queue->regs);
+
+    kfree(data);
 
     switch_address_space(run_queue);
     usermode_jump(run_queue);

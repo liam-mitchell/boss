@@ -1,7 +1,7 @@
 #ifndef __SYSCALLS_H_
 #define __SYSCALLS_H_
 
-#include "mm.h"
+#include "pmm.h"
 
 void init_syscalls();
 

@@ -168,7 +168,7 @@ superblock_t *init_initrd(uint32_t start)
     putc('\n');
 
     const char *name = "init";
-    superblock_t *sb = kzalloc(sizeof(*sb) + strlen(name) + 1);
+    superblock_t *sb = kzalloc(MEM_GEN, sizeof(*sb) + strlen(name) + 1);
     strncpy(sb->name, name, strlen(name));
     sb->ops = &initrd_sops;
 
@@ -179,11 +179,8 @@ superblock_t *init_initrd(uint32_t start)
     puth(initrd_num);
     putc('\n');
     
-    inode_t *root = kzalloc(sizeof(*root));
-    root->uid = 0;
-    root->gid = 0;
+    inode_t *root = kzalloc(MEM_GEN, sizeof(*root));
     root->flags = FS_DIR;
-    root->ino = 0;
     root->permissions = 0x0755;
     root->ops = &initrd_iops;
 
@@ -192,26 +189,9 @@ superblock_t *init_initrd(uint32_t start)
     memset(initrd_files, 0, sizeof(initrd_file_t) * INITRD_MAX_FILES);
 
     start += sizeof(initrd_start);
+
     for (uint32_t i = 0; i < initrd_num; ++i) {
         memcpy(&initrd_files[i], (void *)start, sizeof(initrd_file_t));
-        puts("initrd file ");
-        puti(i);
-        puts(":\n offset ");
-        puth(initrd_files[i].offset);
-        puts("\n length ");
-        puth(initrd_files[i].length);
-        puts("\n flags ");
-        puth(initrd_files[i].flags);
-        putc('\n');
-
-        /* if (initrd_files[i].flags == FS_FILE) { */
-        /*     char buf[NAME_MAX]; */
-        /*     strncpy(buf, (char *)initrd_start + initrd_files[i].offset, initrd_files[i].length); */
-        /*     puts("file data: "); */
-        /*     puts(buf); */
-        /*     putc('\n'); */
-        /* } */
-        
         start += sizeof(initrd_file_t);
     }
 

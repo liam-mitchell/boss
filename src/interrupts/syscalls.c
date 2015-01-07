@@ -4,6 +4,7 @@
 #include "errno.h"
 #include "interrupt.h"
 #include "printf.h"
+#include "vmm.h"
 
 static int sys_write(char __user *buf, uint32_t len);
 

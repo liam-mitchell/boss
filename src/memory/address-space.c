@@ -4,8 +4,8 @@
 
 address_space_t *alloc_address_space()
 {
-    address_space_t *as = kzalloc(sizeof(*as));
-    as->pgdir = kzalloc(PAGE_SIZE);
+    address_space_t *as = kzalloc(MEM_GEN, sizeof(*as));
+    as->pgdir = kzalloc(MEM_GEN, PAGE_SIZE);
 
     return as;
 }

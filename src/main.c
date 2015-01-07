@@ -8,7 +8,7 @@
 #include "macros.h"
 #include "mboot.h"
 #include "memory.h"
-#include "mm.h"
+#include "pmm.h"
 #include "pci.h"
 #include "printf.h"
 #include "syscalls.h"
@@ -16,6 +16,7 @@
 #include "terminal.h"
 #include "timer.h"
 #include "vfs.h"
+#include "vmm.h"
 
 #ifdef __cplusplus
 EXTERN

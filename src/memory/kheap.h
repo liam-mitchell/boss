@@ -3,9 +3,14 @@
 
 #include <stdint.h>
 
-void *kmalloc(uint32_t size);
-void *kcalloc(uint32_t num, uint32_t size);
-void *kzalloc(uint32_t size);
+typedef enum {
+    MEM_GEN,
+    MEM_DMA
+} kmem_type_t;
+
+void *kmalloc(kmem_type_t type, uint32_t size);
+void *kcalloc(kmem_type_t type, uint32_t num, uint32_t size);
+void *kzalloc(kmem_type_t type, uint32_t size);
 void kfree(void *address);
 
 void init_kheap(void);

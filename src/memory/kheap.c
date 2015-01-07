@@ -3,8 +3,9 @@
 #include "errno.h"
 #include "ldsymbol.h"
 #include "macros.h"
-#include "mm.h"
+#include "pmm.h"
 #include "memory.h"
+#include "vmm.h"
 
 typedef struct chunk {
     uint32_t size;
@@ -12,12 +13,20 @@ typedef struct chunk {
     struct chunk *next;
 } chunk_t;
 
+typedef struct dma_chunk {
+    uint32_t size;
+    uint32_t virtual;
+    struct dma_chunk *next;
+} dma_chunk_t;
+
 #define CHUNK_PTR(usr) ((void *)(usr) - sizeof(chunk_t))
 #define USER_PTR(chnk) ((void *)(chnk) + sizeof(chunk_t))
 
 extern ldsymbol ld_heap_start;
 static uint32_t kheap_top;
 static chunk_t *first_free_chunk;
+static dma_chunk_t *dma_chunks;
+static dma_chunk_t *free_dma_chunks;
 
 static void print_chunk(chunk_t *chunk)
 {
@@ -184,12 +193,109 @@ static void *kmalloc_large(uint32_t size)
     return USER_PTR(chunk);
 }
 
-void *kmalloc(uint32_t size)
+static void insert_dma(dma_chunk_t **list, dma_chunk_t *chunk)
 {
-    if (size & 3) {
-        size &= 0xFFFFFFFC;
-        size += 4;
+    if (!*list) {
+        *list = chunk;
+        chunk->next = NULL;
+        return;
     }
+
+    dma_chunk_t *curr = *list;
+    while (curr->next) {
+        curr = curr->next;
+    }
+
+    curr->next = chunk;
+    chunk->next = NULL;
+}
+
+static dma_chunk_t *remove_dma(dma_chunk_t **list, uint32_t virtual)
+{
+    dma_chunk_t *curr = *list;
+    dma_chunk_t *next = curr->next;
+
+    if (curr->virtual == virtual) {
+        *list = next;
+        return curr;
+    }
+
+    while (next) {
+        if (next->virtual == virtual) {
+            curr->next = next->next;
+            return next;
+        }
+    }
+
+    return NULL;
+}
+
+static dma_chunk_t *find_dma(dma_chunk_t *list, uint32_t size)
+{
+    while (list) {
+        if (list->size > size) {
+            return list;
+        }
+    }
+
+    return NULL;
+}
+
+static dma_chunk_t *split_dma(dma_chunk_t *chunk, uint32_t size)
+{
+    if (size >= chunk->size) {
+        PANIC("Tried to split DMA chunk into parts larger than the whole!");
+    }
+
+    dma_chunk_t *new = kzalloc(MEM_GEN, sizeof(*new));
+    chunk->size -= size;
+    new->size = size;
+    new->virtual = chunk->virtual + size;
+
+    return new;
+}
+
+static void *kmalloc_dma(uint32_t size)
+{
+    size = align(size, PAGE_SIZE);
+    dma_chunk_t *chunk = find_dma(free_dma_chunks, size);
+
+    if (chunk) {
+        remove_dma(&free_dma_chunks, chunk->virtual);
+        dma_chunk_t *new = split_dma(chunk, size);
+        insert_dma(&free_dma_chunks, new);
+        insert_dma(&dma_chunks, chunk);
+        return (void *)(chunk->virtual);
+    }
+    
+    uint32_t addr = kheap_top;
+    kheap_top += size;
+
+    chunk = kzalloc(MEM_GEN, sizeof(*chunk));
+    chunk->size = size;
+    chunk->virtual = addr;
+    insert_dma(&dma_chunks, chunk);
+
+    return (void *)(chunk->virtual);
+}
+
+static void kfree_dma(void *virtual)
+{
+    dma_chunk_t *chunk = remove_dma(&dma_chunks, (uint32_t)virtual);
+    if (!chunk) {
+        PANIC("Unable to find DMA chunk to free!");
+    }
+
+    insert_dma(&free_dma_chunks, chunk);
+}
+
+void *kmalloc(kmem_type_t type, uint32_t size)
+{
+    if (type == MEM_DMA) {
+        return kmalloc_dma(size);
+    }
+
+    size = align(size, 4);
 
     if (size > PAGE_SIZE - sizeof(chunk_t)) {
         return kmalloc_large(size);
@@ -227,16 +333,16 @@ void *kmalloc(uint32_t size)
     return USER_PTR(ret);
 }
 
-void *kcalloc(uint32_t num, uint32_t size)
+void *kcalloc(kmem_type_t type, uint32_t num, uint32_t size)
 {
-    void *ret = kmalloc(size * num);
+    void *ret = kmalloc(type, size * num);
     memset(ret, 0, size * num);
     return ret;
 }
 
-void *kzalloc(uint32_t size)
+void *kzalloc(kmem_type_t type, uint32_t size)
 {
-    return kcalloc(1, size);
+    return kcalloc(type, 1, size);
 }
 
 void kfree(void *address)
@@ -244,7 +350,11 @@ void kfree(void *address)
     if (address == NULL) {
         return;
     }
-    
+
+    if (check_dma_address((uint32_t)address)) {
+        kfree_dma(address);
+    }
+
     chunk_t *chunk = CHUNK_PTR(address);
     chunk->next = NULL;
     chunk->prev = NULL;

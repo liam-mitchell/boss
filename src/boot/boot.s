@@ -17,7 +17,7 @@
         extern ld_initrd
         extern kernel_main
 
-        extern init_free_frame_stack
+        extern init_pmm
         
 section .bootstrap_stack
 align 4096
@@ -246,7 +246,7 @@ virtual_map_end:
         
         ;; Initialize the free frame stack
         ;; which takes a multiboot * as parameter
-        call init_free_frame_stack
+        call init_pmm
 
         ;; Tell the processor where our page directory is
         mov eax, ld_page_directory
