@@ -137,8 +137,23 @@ static int map_page(uint32_t virtual, uint32_t physical,
     return 1;
 }
 
+int _alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
+{
+    printf("Allocating page at virtual address %x\n", virtual);
+    uint32_t physical = _alloc_frame();
+    printf("Allocated frame %x\n", physical);
+    if (!physical) {
+        return -ENOMEM;
+    }
+
+    map_page(virtual, physical, readonly, kernel);
+    
+    return 1;
+}
+
 int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
 {
+    printf("Allocating page at virtual address %x\n", virtual);
     uint32_t physical = alloc_frame();
 
     if (!physical) {

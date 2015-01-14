@@ -42,4 +42,7 @@ typedef struct idt_entry_t idt_entry_t;
 void init_descriptor_tables();
 void flush_idt();
 
+void enable_irq(uint8_t irq);
+void disable_irq(uint8_t irq);
+
 #endif // __DESCRIPTOR_TABLES_H

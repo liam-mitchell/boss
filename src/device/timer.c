@@ -5,17 +5,16 @@
 
 uint32_t ticks = 0;
 
-static void timer_callback(registers_t *registers)
+static void timer_callback(registers_t __unused *registers)
 {
     ++ticks;
 
-    registers = registers;
-    
-    if (ticks % 100 == 0) {
-        puts("Tick: ");
-        putui(ticks);
-        putc('\n');
-    }
+    /* TODO: this isn't threadsafe! */
+    /* if (ticks % 100 == 0) { */
+    /*     puts("Tick: "); */
+    /*     putui(ticks); */
+    /*     putc('\n'); */
+    /* } */
 }
 
 void timer_init(uint32_t frequency)

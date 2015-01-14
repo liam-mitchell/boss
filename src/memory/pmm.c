@@ -91,18 +91,23 @@ static void dma_set_frames(uint32_t physical, uint32_t n, bool allocated)
 static bool dma_frame_is_free(uint32_t physical)
 {
     if (!check_dma_address(physical)) {
+        printf("Address was not valid DMA address: %x\n", physical);
         return false;
     }
 
     uint32_t index = dma_index(physical);
     uint32_t bit = dma_bit(physical);
+    printf("Address was valid DMA address: bitmap at index %x (checking bit %d)\n", dma_bitmap[index], bit);
+
     return !TST_BIT(dma_bitmap[index], bit);
 }
 
 static bool dma_frames_are_free(uint32_t physical, uint32_t n)
 {
+    printf("Checking if %x DMA frames are free at %x\n", n, physical);
     for (uint32_t i = 0; i < n; ++i) {
         if (!dma_frame_is_free(physical + i * PAGE_SIZE)) {
+            printf("Frame %x was not free\n", i);
             return false;
         }
     }
@@ -116,6 +121,7 @@ uint32_t dma_alloc_frames(uint32_t n)
          physical < dma_end();
          physical += PAGE_SIZE)
     {
+        printf("Checking DMA address %x\n", physical);
         if (dma_frames_are_free(physical, n)) {
             dma_set_frames(physical, n, true);
             return physical;
@@ -128,6 +134,20 @@ uint32_t dma_alloc_frames(uint32_t n)
 void dma_free_frames(uint32_t physical, uint32_t n)
 {
     dma_set_frames(physical, n, false);
+}
+
+uint32_t _alloc_frame()
+{
+    uint32_t ret = free_stack_top;
+
+    printf("allocating frame %x (free_stack_top %x)\n", ret, free_stack_top);
+    uint32_t virtual = map_physical(ret);
+    memcpy(&free_stack_top, (void *)virtual, sizeof(free_stack_top));
+    unmap_page(virtual);
+    printf("free stack top now %x\n", free_stack_top);
+    while(1);
+
+    return ret;
 }
 
 uint32_t alloc_frame()
@@ -193,11 +213,11 @@ static uint32_t init_pmm_dma(multiboot_info_t *mboot)
         uint32_t bit = dma_bit(address);
 
         if (mem_range_is_free(mboot, address, address + PAGE_SIZE)) {
-            SET_BIT(bitmap[index], bit);
+            CLR_BIT(bitmap[index], bit);
             ++count;
         }
         else {
-            CLR_BIT(bitmap[index], bit);
+            SET_BIT(bitmap[index], bit);
         }
     }
 

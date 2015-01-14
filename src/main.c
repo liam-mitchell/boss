@@ -35,11 +35,7 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     terminal_init();
 
     if (magic != 0x2BADB002) {
-        puth(magic);
-        puts(" ");
-        puth((uint32_t)mboot);
-        puts(" ");
-        PANIC(" Incorrect magic number from grub!");
+        PANIC("Incorrect magic number from grub!");
     }
 
     if (mboot->mods_count == 0) {

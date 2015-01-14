@@ -8,7 +8,7 @@
 #endif
 
 #define __packed __attribute((packed))
-#define __unused __attribute((unused))
+#define __unused __attribute((__unused__))
 #define __user
 #define __section(sct) __attribute((section (sct)))
 

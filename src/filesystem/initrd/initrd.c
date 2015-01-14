@@ -1,5 +1,6 @@
 #include "initrd.h"
 
+#include "compiler.h"
 #include "errno.h"
 #include "fs.h"
 #include "kheap.h"
@@ -71,12 +72,6 @@ static void initrd_read_inode(superblock_t *sb, inode_t *inode)
 
 static uint32_t initrd_lookup(inode_t *dir, char *name)
 {
-    puts("looking up ");
-    puts(name);
-    puts(" in dir with ino ");
-    puti(dir->ino);
-    putc('\n');
-
     if (dir->flags != FS_DIR) {
         puts("attempted lookup in inode that wasn't directory\n");
         return 0;
@@ -93,10 +88,6 @@ static uint32_t initrd_lookup(inode_t *dir, char *name)
 
         memcpy(&ino, dir_data, sizeof(ino));
         dir_name = dir_data + sizeof(ino);
-
-        printf("checking filename %s (length %d)\n"
-               " against direntry with name %s\n",
-               name, strlen(name), dir_name);
 
         if (strncmp(dir_name, name, strlen(name)) == 0) {
             memcpy(&ret, dir_data, sizeof(uint32_t));
@@ -133,10 +124,6 @@ static uint32_t initrd_read(file_t *file, uint32_t *offset,
 
 static int initrd_open(file_t *file, inode_t *inode, uint8_t mode)
 {
-    puts("opening initrd file inode #");
-    puth(inode->ino);
-    putc('\n');
-
     if (inode->ino > initrd_num) {
         return -ENOENT;
     }
@@ -145,40 +132,32 @@ static int initrd_open(file_t *file, inode_t *inode, uint8_t mode)
         return -EISDIR;
     }
 
-    puts("filling file data...\n");
     file->inode = inode;
     file->length = initrd_files[inode->ino].length;
     file->offset = 0;
     file->mode = mode;
     file->ops = &initrd_fops;
-    puts("filled file data\n");
 
     return 0;
 }
 
-static void initrd_close(file_t *file)
+static void initrd_close(file_t __unused *file)
 {
-    UNUSED(file);
+
 }
 
 superblock_t *init_initrd(uint32_t start)
 {
-    puts("Initializing initrd @");
-    puth(start);
-    putc('\n');
-
+    printf("Initializing initrd at %x\n", start);
     const char *name = "init";
     superblock_t *sb = kzalloc(MEM_GEN, sizeof(*sb) + strlen(name) + 1);
+
     strncpy(sb->name, name, strlen(name));
     sb->ops = &initrd_sops;
 
     initrd_start = start;
     memcpy(&initrd_num, (void *)initrd_start, sizeof(initrd_num));
 
-    puts("number of initrd files: ");
-    puth(initrd_num);
-    putc('\n');
-    
     inode_t *root = kzalloc(MEM_GEN, sizeof(*root));
     root->flags = FS_DIR;
     root->permissions = 0x0755;

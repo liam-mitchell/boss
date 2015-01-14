@@ -1,6 +1,10 @@
 #include "descriptor_tables.h"
+
+#include "bits.h"
+#include "interrupt.h"
 #include "ldsymbol.h"
 #include "memory.h"
+#include "printf.h"
 #include "terminal.h"
 #include "device_io.h"
 
@@ -291,4 +295,34 @@ static void pic_remap(int master, int slave)
 void flush_idt()
 {
     idt_flush((uint32_t)&idt_ptr);
+}
+
+void enable_irq(uint8_t irq)
+{
+    printf("Enabling irq %d\n", irq);
+    if (irq < 8) {
+        uint8_t mask = inb(PIC1_D);
+        SET_BIT(mask, irq);
+        outb(PIC1_D, mask);
+    }
+    else {
+        uint8_t mask = inb(PIC1_D);
+        SET_BIT(mask, irq - 8);
+        outb(PIC1_D, mask);
+    }
+}
+
+void disable_irq(uint8_t irq)
+{
+    printf("Disabling irq %d\n", irq);
+    if (irq < 8) {
+        uint8_t mask = inb(PIC1_D);
+        CLR_BIT(mask, irq);
+        outb(PIC1_D, mask);
+    }
+    else {
+        uint8_t mask = inb(PIC1_D);
+        CLR_BIT(mask, irq - 8);
+        outb(PIC1_D, mask);
+    }
 }

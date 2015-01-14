@@ -3,8 +3,9 @@
 #include "errno.h"
 #include "ldsymbol.h"
 #include "macros.h"
-#include "pmm.h"
 #include "memory.h"
+#include "pmm.h"
+#include "printf.h"
 #include "vmm.h"
 
 typedef struct chunk {
@@ -28,17 +29,10 @@ static chunk_t *first_free_chunk;
 static dma_chunk_t *dma_chunks;
 static dma_chunk_t *free_dma_chunks;
 
-static void print_chunk(chunk_t *chunk)
+static void print_chunk(chunk_t *chunk, const char *msg)
 {
-    puts("@");
-    puth((uint32_t)chunk);
-    puts(": ");
-    puth(chunk->size);
-    puts("[->");
-    puth((uint32_t)chunk->next);
-    puts("][<-");
-    puth((uint32_t)chunk->prev);
-    puts("]\n");
+    printf("%s (addr %x): size %x prev %x next %x\n",
+           msg, chunk, chunk->size, chunk->prev, chunk->next);
 }
 
 void print_chunk_list(void)
@@ -48,8 +42,7 @@ void print_chunk_list(void)
          chunk != NULL;
          chunk = chunk->next)
     {
-        puts("chunk: ");
-        print_chunk(chunk);
+        print_chunk(chunk, "chunk");
     }
 }
 
@@ -143,16 +136,18 @@ static chunk_t *remove_chunk(chunk_t *chunk) {
 
 static void insert_chunk(chunk_t *chunk)
 {
+    print_chunk(chunk, "inserting");
     chunk_t *free = first_free_chunk;
 
-    if (free == NULL) {
+    if (!free) {
+        print_chunk(chunk, "inserting first");
         chunk->next = NULL;
         chunk->prev = NULL;
         first_free_chunk = chunk;
     }
     else {
-        while (free != NULL) {
-            if (free >= chunk) {
+        while (free) {
+            if (free->size >= chunk->size) {
                 insert_before(free, chunk);
                 break;
             }
@@ -230,10 +225,21 @@ static dma_chunk_t *remove_dma(dma_chunk_t **list, uint32_t virtual)
     return NULL;
 }
 
+static bool dma_region_ok(uint32_t physical, uint32_t size)
+{
+    if ((physical & 0xFFFF) + size > 0xFFFF) {
+        return false;
+    }
+    else {
+        return true;
+    }
+}
+
 static dma_chunk_t *find_dma(dma_chunk_t *list, uint32_t size)
 {
     while (list) {
-        if (list->size > size) {
+        uint32_t physical = get_physical(list->virtual);
+        if (list->size > size && dma_region_ok(physical, size)) {
             return list;
         }
     }
@@ -258,16 +264,27 @@ static dma_chunk_t *split_dma(dma_chunk_t *chunk, uint32_t size)
 static void *kmalloc_dma(uint32_t size)
 {
     size = align(size, PAGE_SIZE);
+    printf("Allocating DMA memory of size %x\n", size);
+
     dma_chunk_t *chunk = find_dma(free_dma_chunks, size);
 
     if (chunk) {
+        printf("Found DMA chunk to reallocate!\n");
         remove_dma(&free_dma_chunks, chunk->virtual);
         dma_chunk_t *new = split_dma(chunk, size);
         insert_dma(&free_dma_chunks, new);
         insert_dma(&dma_chunks, chunk);
         return (void *)(chunk->virtual);
     }
-    
+
+    printf("No DMA chunk found - allocating new chunk with %d pages\n", size / PAGE_SIZE);
+    int err = dma_alloc_pages(kheap_top, false, true, size / PAGE_SIZE);
+    if (err < 0) {
+        printf("Error allocating new chunk - returning ENOMEM\n");
+        errno = ENOMEM;
+        return NULL;
+    }
+
     uint32_t addr = kheap_top;
     kheap_top += size;
 
@@ -275,6 +292,8 @@ static void *kmalloc_dma(uint32_t size)
     chunk->size = size;
     chunk->virtual = addr;
     insert_dma(&dma_chunks, chunk);
+
+    printf("Allocated new DMA chunk at %x (size %x)\n", chunk->virtual, chunk->size);
 
     return (void *)(chunk->virtual);
 }
@@ -303,7 +322,7 @@ void *kmalloc(kmem_type_t type, uint32_t size)
 
     chunk_t *chunk = first_free_chunk;
 
-    while (chunk != NULL) {
+    while (chunk) {
         if (chunk->size == size) {
             return USER_PTR(remove_chunk(chunk));
         }
@@ -317,7 +336,7 @@ void *kmalloc(kmem_type_t type, uint32_t size)
         chunk = chunk->next;
     }
 
-    int err = alloc_page(kheap_top, 0, 1);
+    int err = _alloc_page(kheap_top, 0, 1);
     if (err < 0) {
         errno = ENOMEM;
         return NULL;
@@ -325,7 +344,7 @@ void *kmalloc(kmem_type_t type, uint32_t size)
 
     chunk_t *ret = (chunk_t *)kheap_top;
     ret->size = PAGE_SIZE - sizeof(*ret);
-    
+
     kheap_top += PAGE_SIZE;
 
     chunk_t *new = split_chunk(ret, size);
@@ -371,10 +390,18 @@ void init_kheap(void)
         PANIC("Unable to allocate pages for the kernel heap!");
     }
 
-    chunk_t *first_chunk = (chunk_t *)kheap_top;
-    first_chunk->size = PAGE_SIZE - sizeof(*first_chunk);
-    insert_chunk(first_chunk);
-    
+    chunk_t *chunk = (chunk_t *)kheap_top;
+    chunk->size = PAGE_SIZE - sizeof(*chunk);
+
+    print_chunk(chunk, "inserting");
+    printf("%s (addr %x): size %x prev %x next %x\n",
+           "inserting", chunk, chunk->size, chunk->prev, chunk->next);
+    insert_chunk(chunk);
+    printf("%s (addr %x): size %x prev %x next %x\n",
+           "inserted", chunk, chunk->size, chunk->prev, chunk->next);
+    /* print_chunk(chunk, "inserted"); */
+
     kheap_top += PAGE_SIZE;
     puts("Initialized kernel heap!\n");
+    printf("First chunk size: %x\n", first_free_chunk->size);
 }

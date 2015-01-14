@@ -31,6 +31,7 @@
 
 /* uint32_t kdirectory; */
 
+uint32_t _alloc_frame();
 uint32_t alloc_frame();
 uint32_t dma_alloc_frames(uint32_t n);
 void free_frame(uint32_t address);
