@@ -18,6 +18,7 @@
 #define PG_DIRTY (1 << 4)
 
 #define PG_FRAME(p) ((p) & ~0xFFF)
+#define PG_INFO(p) ((p) & 0xFFF)
 #define PG_IS_PRESENT(p) ((p) & PG_PRESENT)
 #define PG_IS_WRITEABLE(p) ((p) & PG_WRITEABLE)
 #define PG_IS_USERMODE(p) ((p) & PG_USER)

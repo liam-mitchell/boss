@@ -136,11 +136,11 @@ static chunk_t *remove_chunk(chunk_t *chunk) {
 
 static void insert_chunk(chunk_t *chunk)
 {
-    print_chunk(chunk, "inserting");
+    /* print_chunk(chunk, "inserting"); */
     chunk_t *free = first_free_chunk;
 
     if (!free) {
-        print_chunk(chunk, "inserting first");
+        /* print_chunk(chunk, "inserting first"); */
         chunk->next = NULL;
         chunk->prev = NULL;
         first_free_chunk = chunk;
@@ -184,6 +184,8 @@ static void *kmalloc_large(uint32_t size)
         chunk_t *new = split_chunk(chunk, size);
         insert_chunk(new);
     }
+
+    kheap_top += aligned_size;
     
     return USER_PTR(chunk);
 }
@@ -264,12 +266,12 @@ static dma_chunk_t *split_dma(dma_chunk_t *chunk, uint32_t size)
 static void *kmalloc_dma(uint32_t size)
 {
     size = align(size, PAGE_SIZE);
-    printf("Allocating DMA memory of size %x\n", size);
+    /* printf("Allocating DMA memory of size %x\n", size); */
 
     dma_chunk_t *chunk = find_dma(free_dma_chunks, size);
 
     if (chunk) {
-        printf("Found DMA chunk to reallocate!\n");
+        /* printf("Found DMA chunk to reallocate!\n"); */
         remove_dma(&free_dma_chunks, chunk->virtual);
         dma_chunk_t *new = split_dma(chunk, size);
         insert_dma(&free_dma_chunks, new);
@@ -277,10 +279,10 @@ static void *kmalloc_dma(uint32_t size)
         return (void *)(chunk->virtual);
     }
 
-    printf("No DMA chunk found - allocating new chunk with %d pages\n", size / PAGE_SIZE);
+    /* printf("No DMA chunk found - allocating new chunk with %d pages\n", size / PAGE_SIZE); */
     int err = dma_alloc_pages(kheap_top, false, true, size / PAGE_SIZE);
     if (err < 0) {
-        printf("Error allocating new chunk - returning ENOMEM\n");
+        /* printf("Error allocating new chunk - returning ENOMEM\n"); */
         errno = ENOMEM;
         return NULL;
     }
@@ -293,7 +295,7 @@ static void *kmalloc_dma(uint32_t size)
     chunk->virtual = addr;
     insert_dma(&dma_chunks, chunk);
 
-    printf("Allocated new DMA chunk at %x (size %x)\n", chunk->virtual, chunk->size);
+    /* printf("Allocated new DMA chunk at %x (size %x)\n", chunk->virtual, chunk->size); */
 
     return (void *)(chunk->virtual);
 }
@@ -336,7 +338,7 @@ void *kmalloc(kmem_type_t type, uint32_t size)
         chunk = chunk->next;
     }
 
-    int err = _alloc_page(kheap_top, 0, 1);
+    int err = alloc_page(kheap_top, 0, 1);
     if (err < 0) {
         errno = ENOMEM;
         return NULL;
@@ -361,12 +363,13 @@ void *kcalloc(kmem_type_t type, uint32_t num, uint32_t size)
 
 void *kzalloc(kmem_type_t type, uint32_t size)
 {
-    return kcalloc(type, 1, size);
+    void *ret = kcalloc(type, 1, size);
+    return ret;
 }
 
 void kfree(void *address)
 {
-    if (address == NULL) {
+    if (!address) {
         return;
     }
 

@@ -10,5 +10,9 @@ typedef struct address_space {
 } address_space_t;
 
 address_space_t *alloc_address_space();
+void free_address_space(address_space_t *as);
+address_space_t *clone_address_space();
+void switch_address_space(address_space_t *old, const address_space_t *new);
+void save_address_space(address_space_t *as);
 
 #endif // __ADDRESS_SPACE_H_

@@ -19,7 +19,7 @@ typedef struct task {
     uint32_t pid;
     uint32_t state;
 
-    file_t *files[TASK_MAX_FILES];
+    /* file_t *files[TASK_MAX_FILES]; */
 
     struct task *next;
 } task_t;
@@ -28,6 +28,9 @@ struct task *run_queue;
 struct task *idle;
 
 void init_scheduler();
-void exec(const char *path);
+int exec(const char *path);
+int fork();
+
+void print_regs(registers_t *regs, char *msg);
 
 #endif

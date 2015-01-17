@@ -4,14 +4,17 @@
 #include "errno.h"
 #include "interrupt.h"
 #include "printf.h"
+#include "task.h"
 #include "vmm.h"
 
 static int sys_write(char __user *buf, uint32_t len);
+static int sys_exec(const char __user *path);
+static int sys_fork();
 
 static void *syscalls[] = {
     0, /* sys_setup */
     0, /* sys_exit */
-    0, /* sys_fork */
+    sys_fork,
     0, /* sys_read */
     sys_write,
     0, /* sys_open */
@@ -20,10 +23,26 @@ static void *syscalls[] = {
     0, /* sys_creat */
     0, /* sys_link */
     0, /* sys_unlink */
-    0, /* sys_execve */
+    sys_exec, /* sys_execve */
 };
 
 static uint32_t nsyscalls = ARRAY_SIZE(syscalls);
+
+static int sys_exec(const char __user *path)
+{
+    if (!check_user_ptr(path)) {
+        return -EFAULT;
+    }
+
+    exec(path);
+
+    return -1; /* exec shouldn't come back! */
+}
+
+static int sys_fork()
+{
+    return fork();
+}
 
 static int sys_write(char __user *buf, uint32_t len)
 {
@@ -40,15 +59,16 @@ static int sys_write(char __user *buf, uint32_t len)
 
 static void syscall_handler(registers_t *regs)
 {
-    printf("Handling syscall %x\n", regs->eax);
+    run_queue->regs = *regs;
 
     if (regs->eax >= nsyscalls || !syscalls[regs->eax]) {
         regs->eax = -ENOSYS;
         return;
     }
 
-    printf("found syscall %x\n", regs->eax);
-    printf("syscall addr %x\n", syscalls[regs->eax]);
+    /* printf("found syscall %x\n", regs->eax); */
+    /* printf("syscall addr %x\n", syscalls[regs->eax]); */
+    /* print_regs(regs, "before syscall, come from registers"); */
     
     void *syscall = syscalls[regs->eax];
     asm volatile ("push %1\n\t"
@@ -58,12 +78,7 @@ static void syscall_handler(registers_t *regs)
                   "push %5\n\t"
                   "push %6\n\t"
                   "call *%7\n\t"
-                  "pop %%ebx\n\t"
-                  "pop %%ebx\n\t"
-                  "pop %%ebx\n\t"
-                  "pop %%ebx\n\t"
-                  "pop %%ebx\n\t"
-                  "pop %%ebx\n\t"
+                  "add $24, %%esp\n\t"
                   : "=g"(regs->eax)
                   : "g"(regs->ebp), "g"(regs->edi),
                     "g"(regs->esi), "g"(regs->edx),
@@ -71,7 +86,9 @@ static void syscall_handler(registers_t *regs)
                     "r"(syscall)
                   :);
 
-    printf("syscall returned %x\n", regs->eax);
+    /* printf("syscall returned %x\n", regs->eax); */
+    /* print_regs(regs, "after syscall, return to registers"); */
+    /* printf("next word at eip %x: %x\n", regs->eip, *(uint32_t *)regs->eip); */
 }
 
 void init_syscalls()

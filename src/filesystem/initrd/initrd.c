@@ -72,8 +72,9 @@ static void initrd_read_inode(superblock_t *sb, inode_t *inode)
 
 static uint32_t initrd_lookup(inode_t *dir, char *name)
 {
+    printf("Looking up file %s in inode %d\n", name, dir->ino);
     if (dir->flags != FS_DIR) {
-        puts("attempted lookup in inode that wasn't directory\n");
+        errno = ENODIR;
         return 0;
     }
 
@@ -94,8 +95,8 @@ static uint32_t initrd_lookup(inode_t *dir, char *name)
             break;
         }
 
-        dir_data += sizeof(ino) + strlen(name);
-        dir_data = (void *)ALIGN((uint32_t)dir_data, 4);
+        dir_data += sizeof(ino) + strlen(dir_name);
+        dir_data = alignp(dir_data, 4);
     }
 
     return ret;
@@ -146,6 +147,16 @@ static void initrd_close(file_t __unused *file)
 
 }
 
+static void print_file(uint32_t i)
+{
+    printf("File %d:\n"
+           " length %d\n"
+           " data %s\n",
+           i,
+           initrd_files[i].length,
+           initrd_start + initrd_files[i].offset);
+}
+
 superblock_t *init_initrd(uint32_t start)
 {
     printf("Initializing initrd at %x\n", start);
@@ -171,6 +182,7 @@ superblock_t *init_initrd(uint32_t start)
 
     for (uint32_t i = 0; i < initrd_num; ++i) {
         memcpy(&initrd_files[i], (void *)start, sizeof(initrd_file_t));
+        print_file(i);
         start += sizeof(initrd_file_t);
     }
 

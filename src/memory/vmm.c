@@ -139,9 +139,9 @@ static int map_page(uint32_t virtual, uint32_t physical,
 
 int _alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
 {
-    printf("Allocating page at virtual address %x\n", virtual);
+    /* printf("Allocating page at virtual address %x\n", virtual); */
     uint32_t physical = _alloc_frame();
-    printf("Allocated frame %x\n", physical);
+    /* printf("Allocated frame %x\n", physical); */
     if (!physical) {
         return -ENOMEM;
     }
@@ -153,7 +153,7 @@ int _alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
 
 int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
 {
-    printf("Allocating page at virtual address %x\n", virtual);
+    /* printf("Allocating page at virtual address %x\n", virtual); */
     uint32_t physical = alloc_frame();
 
     if (!physical) {
@@ -220,7 +220,7 @@ void free_page(uint32_t virtual)
     unmap_page(virtual);
 }
 
-bool check_user_ptr(void __user *ptr)
+bool check_user_ptr(const void __user *ptr)
 {
     uint32_t *pde = (uint32_t *)get_page_directory_entry((uint32_t)ptr);
     if (!PG_IS_PRESENT(*pde)) {

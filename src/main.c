@@ -57,7 +57,7 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     init_filesystem();
     init_keyboard();
     init_syscalls();
-    init_pci();
+    /* init_pci(); */
     init_scheduler();
     
     /* file_t *placeholder = */

@@ -39,9 +39,9 @@ void register_interrupt_callback(uint8_t n, interrupt_callback cb)
     printf("Registering callback %x (%d)\n", n, n);
     callbacks[n] = cb;
 
-    if (n >= 0x20) {
-        enable_irq(n - 0x20);
-    }
+    /* if (n >= 0x20) { */
+        /* enable_irq(n - 0x20); */
+    /* } */
 }
 
 #ifdef __cplusplus

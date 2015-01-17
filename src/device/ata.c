@@ -278,7 +278,7 @@ static void identify_packet(ata_bus_t *bus, ata_drvtype_t drv)
         for (uint32_t i = 0; i < ATA_IDBUF_SIZE; ++i) {
             inw(bus->port_data + ATA_PORT_DATA);
         }
-x        set_drive_type(bus, drv, ATA_TYPE_NONE);
+        set_drive_type(bus, drv, ATA_TYPE_NONE);
         return;
     }
 

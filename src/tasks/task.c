@@ -3,6 +3,7 @@
 #include "algorithm.h"
 #include "bool.h"
 #include "descriptor_tables.h"
+#include "errno.h"
 #include "kheap.h"
 #include "ldsymbol.h"
 #include "memory.h"
@@ -25,6 +26,12 @@ static task_t *alloc_task()
     return task;
 }
 
+static void free_task(task_t *task)
+{
+    free_address_space(task->as);
+    kfree(task);
+}
+
 static void task_enqueue(task_t *task)
 {
     if (!run_queue) {
@@ -38,6 +45,7 @@ static void task_enqueue(task_t *task)
     }
 
     curr->next = task;
+    task->next = NULL;
 }
 
 static task_t *task_dequeue()
@@ -51,45 +59,7 @@ static task_t *task_dequeue()
     return ret;
 }
 
-static void switch_address_space(task_t *task)
-{
-    asm volatile("cli");
-
-    for (uint32_t virtual = 0;
-         virtual < (uint32_t)ld_virtual_offset;
-         virtual += PAGE_SIZE)
-    {
-        uint32_t *pde = (uint32_t *)get_page_directory_entry(virtual);
-        uint32_t new_pde = (uint32_t)task->as->pgdir[DIRINDEX(virtual)];
-
-        if (PG_FRAME(*pde) != PG_FRAME(new_pde)) {
-            *pde = new_pde;
-            flush_tlb(virtual);
-        }
-
-        if (PG_IS_PRESENT(*pde)) {
-            uint32_t *new_pt = (uint32_t *)map_physical(new_pde & ~0xFFF);
-            if (!new_pt) {
-                PANIC("unable to map new page table");
-            }
-
-            uint32_t *pg = get_page(virtual);
-            uint32_t new_pg = new_pt[TBLINDEX(virtual)];
-
-
-            if (PG_FRAME(*pg) != PG_FRAME(new_pg)) {
-                *pg = new_pg;
-                flush_tlb(virtual);
-            }
-
-            unmap_page((uint32_t)new_pt);
-        }
-    }
-
-    asm volatile("sti");
-}
-
-static void print_regs(registers_t *regs, char *msg)
+void print_regs(registers_t *regs, char *msg)
 {
     printf("%s:\n"
            " eip: %x\n"
@@ -122,14 +92,13 @@ static void switch_tasks(registers_t *regs)
     }
 
     task_t *old = task_dequeue();
-    print_regs(regs, "switching tasks - old:");
     old->regs = *regs;
 
     task_enqueue(old);
 
-    print_regs(&run_queue->regs, "switching tasks - new:");
+    /* print_regs(&run_queue->regs, "switching tasks - new:"); */
     *regs = run_queue->regs;
-    switch_address_space(run_queue);
+    switch_address_space(old->as, run_queue->as);
 }
 
 static void timer_handler(registers_t *regs)
@@ -137,8 +106,9 @@ static void timer_handler(registers_t *regs)
     static uint32_t ticks = 0;
     ++ticks;
 
+    /* printf("recieved timer interrupt\n"); */
+
     if (ticks % 100 == 0) {
-        printf("tick: %d\n", ticks);
         switch_tasks(regs);
     }
 }
@@ -148,30 +118,73 @@ void init_scheduler()
     printf("Initializing scheduler...\n");
     run_queue = alloc_task();
     register_interrupt_callback(32, &timer_handler);
-    exec("/init/bin/test");
+
+    /* asm volatile ("sti"); */
+    int err = exec("/init/bin/test");
+
+    if (err < 0) {
+        printf("[ERROR] Unable to initialize scheduler (%s)\n",
+               strerror(-err));
+        PANIC();
+    }
 }
 
-static void as_alloc_page(address_space_t *as, uint32_t virtual,
-                          bool readonly, bool kernel)
+static int as_alloc_page(address_space_t *as, uint32_t virtual,
+                         bool readonly, bool kernel)
 {
     uint32_t *pde = (uint32_t *)&as->pgdir[DIRINDEX(virtual)];
     if (!PG_IS_PRESENT(*pde)) {
-        *pde = alloc_frame() | PG_USER | PG_PRESENT | PG_WRITEABLE;
+        uint32_t frame = alloc_frame();
+        if (!frame) {
+            return -ENOMEM;
+        }
+
+        *pde = frame | PG_USER | PG_WRITEABLE | PG_PRESENT;
     }
 
     uint32_t *pt = (uint32_t *)(map_physical(*pde) & ~0xFFF);
     uint32_t *page = &pt[TBLINDEX(virtual)];
 
     *page = alloc_frame();
+    if (!*page) {
+        free_frame(PG_FRAME(*pde));
+        return -ENOMEM;
+    }
+
     set_page_attributes(page, true, !readonly, !kernel);
+
+    unmap_page((uint32_t)pt);
+
+    return 0;
+}
+
+static void as_free_page(address_space_t *as, uint32_t virtual)
+{
+    /* TODO: free the page tables too if we can... */
+    uint32_t *pde = (uint32_t *)&as->pgdir[DIRINDEX(virtual)];
+    if (!PG_IS_PRESENT(*pde)) {
+        return;
+    }
+
+    uint32_t *pt = (uint32_t *)map_physical(PG_FRAME(*pde));
+    uint32_t *page = &pt[TBLINDEX(virtual)];
+
+    if (*page) {
+        free_frame(PG_FRAME(*page));
+    }
 
     unmap_page((uint32_t)pt);
 }
 
-static void map_data(address_space_t *as, uint32_t len, void *data)
+static int map_data(address_space_t *as, uint32_t len, void *data)
 {
+    void *start = data;
+    int err = 0;
     for (uint32_t virtual = 0; virtual < len; virtual += PAGE_SIZE) {
-        as_alloc_page(as, virtual, false, false);
+        err = as_alloc_page(as, virtual, false, false);
+        if (err < 0) {
+            goto free_pages;
+        }
 
         uint32_t *pt =
             (uint32_t *)map_physical(PG_FRAME((uint32_t)as->pgdir[DIRINDEX(virtual)]));
@@ -184,19 +197,28 @@ static void map_data(address_space_t *as, uint32_t len, void *data)
         unmap_page((uint32_t)page);
         unmap_page((uint32_t)pt);
     }
+
+    as->brk = align(len, PAGE_SIZE);
+    return 0;
+
+ free_pages:
+    for (uint32_t virtual = data - start;
+         virtual <= (uint32_t)data;
+         virtual -= PAGE_SIZE)
+    {
+        as_free_page(as, virtual);
+    }
+
+    return err;
 }
 
-static void map_stack(address_space_t *as)
+static int map_stack(address_space_t *as)
 {
-    as_alloc_page(as, (uint32_t)ld_virtual_offset - 4, false, false);
+    return as_alloc_page(as, (uint32_t)ld_virtual_offset - 4, false, false);
 }
 
 static void usermode_jump(task_t *task)
 {
-    printf("usermode jumping to eip %x\n"
-           "first word: %x\n"
-           "second word: %x\n",
-           task->regs.eip, *(uint32_t *)task->regs.eip, *(uint32_t *)(task->regs.eip + 4));
     asm volatile (".intel_syntax noprefix\n\t"
                   "cli\n\t"
                   "mov ax, 0x23\n\t"
@@ -214,12 +236,6 @@ static void usermode_jump(task_t *task)
 
                   "push %2\n\t"
                   "push %3\n\t"
-                  /* "pop eax\n\t" */
-                  /* "pop ebx\n\t" */
-                  /* "popf\n\t" */
-                  /* "pop ecx\n\t" */
-                  /* "pop edx\n\t" */
-                  /* "jmp $\n\t" */
                   "iret\n\t"
                   ".att_syntax noprefix\n\t"
                   :
@@ -237,25 +253,91 @@ void init_exec_registers(registers_t *regs)
     regs->eflags = 1 << 9;
 }
 
-void exec(const char *path)
+int exec(const char *path)
 {
+    int err = 0;
     file_t *binary = open_path(path, MODE_READ);
-    void *data = kmalloc(MEM_GEN, binary->length);
-    uint32_t len = vfs_read(binary, &binary->offset, binary->length, data);
+    if (!binary) {
+        err = -ENOENT;
+        goto error;
+    }
 
+    void *data = kmalloc(MEM_GEN, binary->length);
+    if (!data) {
+        err = -ENOMEM;
+        goto error_file;
+    }
+
+    uint32_t len = vfs_read(binary, &binary->offset, binary->length, data);
     if (len < binary->length) {
-        printf("Unable to read all file data from %s for exec (%d/%d bytes read)",
-               path, len, binary->length);
-        return;
+        err = -EIO;
+        goto error_filedata;
+    }
+
+    if (run_queue->as) {
+        free_address_space(run_queue->as);
     }
 
     run_queue->as = alloc_address_space();
-    map_data(run_queue->as, len, data);
-    map_stack(run_queue->as);
-    init_exec_registers(&run_queue->regs);
+    if (!run_queue->as) {
+        err = -ENOMEM;
+        goto error_filedata;
+    }
 
+    err = map_data(run_queue->as, len, data);
+    if (err < 0) {
+        goto error_as;
+    }
+
+    err = map_stack(run_queue->as);
+    if (err < 0) {
+        goto error_as;
+    }
+
+    init_exec_registers(&run_queue->regs);
+    switch_address_space(NULL, run_queue->as);
+    usermode_jump(run_queue);
+
+ error_as:
+    free_address_space(run_queue->as);
+
+ error_filedata:
     kfree(data);
 
-    switch_address_space(run_queue);
-    usermode_jump(run_queue);
+ error_file:
+    vfs_close(binary);
+
+ error:
+    return err;
+}
+
+int fork()
+{
+    asm volatile ("cli");
+
+    int err = 0;
+
+    task_t *child = alloc_task();
+    if (!child) {
+        err = -ENOMEM;
+        goto error;
+    }
+
+    child->as = clone_address_space();
+    
+    if (!child->as) {
+        err = -ENOMEM;
+        goto error;
+    }
+
+    child->state = TASK_RUNNING;
+    child->regs = run_queue->regs;
+    child->regs.eax = 0;
+    task_enqueue(child);
+    printf("Forking task %d into %d\n", run_queue->pid, child->pid);
+    return child->pid;
+
+ error:
+    free_task(child);
+    return err;
 }

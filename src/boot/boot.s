@@ -241,7 +241,7 @@ virtual_map_end:
         mov edi, [esi + 4 * ebx]           ; edi = ld_page_directory[dirindex]
         and edi, 0xFFFFF000                ; remove information bits
 
-        mov ebx, 0xB8007                   ; ebx = physical_screen
+        mov ebx, 0xB8003                   ; ebx = physical_screen
         mov [edi + 4 * edx], ebx           ; ld_page_directory[dirindex][tblindex] = 0xB8007
         
         ;; Initialize the free frame stack

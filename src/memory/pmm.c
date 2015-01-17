@@ -275,15 +275,38 @@ bool check_dma_address(uint32_t physical)
     return true;
 }
 
-static void page_fault_handler(registers_t *registers)
+static void page_fault_handler(registers_t *regs)
 {
     uint32_t address;
     asm volatile ("mov %%cr2, %0" : "=r"(address) : : );
 
     printf("[PAGE FAULT] address: %x (%s %s %s page)\n", address,
-           (registers->error & 0x4) ? "user" : "kernel",
-           (registers->error & 0x2) ? "write to" : "read from",
-           (registers->error & 0x1) ? "present" : "not present");
+           (regs->error & 0x4) ? "user" : "kernel",
+           (regs->error & 0x2) ? "write to" : "read from",
+           (regs->error & 0x1) ? "present" : "not present");
+
+    printf("registers:\n"
+           " eip: %x\n"
+           " esp: %x\n"
+           " cs:  %x\n"
+           " ss:  %x\n"
+           " eax: %x\n"
+           " ecx: %x\n"
+           " edx: %x\n"
+           " ebp: %x\n"
+           " esi: %x\n"
+           " edi: %x\n",
+           regs->eip,
+           regs->esp,
+           regs->cs,
+           regs->ss,
+           regs->eax,
+           regs->ecx,
+           regs->edx,
+           regs->ebx,
+           regs->esi,
+           regs->edi);
+
 }
 
 void init_paging()

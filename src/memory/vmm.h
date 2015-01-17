@@ -6,7 +6,6 @@
 #include "bool.h"
 #include "compiler.h"
 
-int _alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel);
 int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel);
 int alloc_pages(uint32_t virtual, uint8_t readonly,
                 uint8_t kernel, uint32_t num);
@@ -25,7 +24,7 @@ uint32_t map_physical(uint32_t physical);
 uint32_t get_physical(uint32_t virtual);
 void unmap_page(uint32_t virtual);
 
-bool check_user_ptr(void __user *ptr);
+bool check_user_ptr(const void __user *ptr);
 
 void flush_tlb(uint32_t virtual);
 
