@@ -5,20 +5,26 @@
 #include "interrupt.h"
 #include "printf.h"
 #include "task.h"
+#include "vfs.h"
 #include "vmm.h"
 
-static int sys_write(char __user *buf, uint32_t len);
-static int sys_exec(const char __user *path);
 static int sys_fork();
+static int sys_read(int fd, char __user *buf, uint32_t len);
+static int sys_write(int fd, char __user *buf, uint32_t len);
+static int sys_open(char __user *path, uint8_t mode);
+static int sys_close(int fd);
+static int sys_exec(const char __user *path);
+
+extern void restore_context(registers_t *new);
 
 static void *syscalls[] = {
     0, /* sys_setup */
     0, /* sys_exit */
     sys_fork,
-    0, /* sys_read */
+    sys_read,
     sys_write,
-    0, /* sys_open */
-    0, /* sys_close */
+    sys_open,
+    sys_close,
     0, /* sys_waitpid */
     0, /* sys_creat */
     0, /* sys_link */
@@ -34,9 +40,7 @@ static int sys_exec(const char __user *path)
         return -EFAULT;
     }
 
-    exec(path);
-
-    return -1; /* exec shouldn't come back! */
+    return exec(path);
 }
 
 static int sys_fork()
@@ -44,29 +48,85 @@ static int sys_fork()
     return fork();
 }
 
-static int sys_write(char __user *buf, uint32_t len)
+static int sys_read(int fd, char __user *buf, uint32_t len)
 {
+    printf("sys_read: handling read syscall from pid %d at %x\n", current_task->pid, current_task->regs.eip);
     if (!check_user_ptr(buf) || !check_user_ptr(buf + len)) {
         return -EFAULT;
     }
 
-    for (uint32_t i = 0; i < len; ++i) {
-        printf("%c", buf[i]);
+    file_t *file = current_task->files[fd];
+
+    if (!file) {
+        return -ENOENT;
     }
 
-    return len;
+    return vfs_read(file, &file->offset, len, buf);
+}
+
+static int sys_write(int fd, char __user *buf, uint32_t len)
+{
+    printf("sys_write: handling write syscall from pid %d: %s\n", current_task->pid, buf);
+    if (!check_user_ptr(buf) || !check_user_ptr(buf + len)) {
+        return -EFAULT;
+    }
+
+    /* for (uint32_t i = 0; i < len; ++i) { */
+    /*     printf("%c", buf[i]); */
+    /* } */
+
+    file_t *file = current_task->files[fd];
+
+    if (!file) {
+        return -ENOENT;
+    }
+
+    return vfs_write(file, &file->offset, len, buf);
+}
+
+static int sys_open(char __user *path, uint8_t mode)
+{
+    if (!check_user_ptr(path)) {
+        return -EFAULT;
+    }
+
+    file_t *file = open_path(path, mode);
+    if (!file) {
+        return -ENOENT;
+    }
+
+    for (int i = 0; i < TASK_MAX_FILES; ++i) {
+        if (!current_task->files[i]) {
+            current_task->files[i] = file;
+            return i;
+        }
+    }
+
+    vfs_close(file);
+    return -ENFILE;
+}
+
+static int sys_close(int fd)
+{
+    file_t *file = current_task->files[fd];
+    if (file) {
+        vfs_close(file);
+        return 0;
+    }
+
+    return -ENOENT;
 }
 
 static void syscall_handler(registers_t *regs)
 {
-    run_queue->regs = *regs;
+    current_task->regs = *regs;
 
     if (regs->eax >= nsyscalls || !syscalls[regs->eax]) {
         regs->eax = -ENOSYS;
         return;
     }
 
-    /* printf("found syscall %x\n", regs->eax); */
+    /* printf("handling syscall %x\n", regs->eax); */
     /* printf("syscall addr %x\n", syscalls[regs->eax]); */
     /* print_regs(regs, "before syscall, come from registers"); */
     
@@ -86,9 +146,11 @@ static void syscall_handler(registers_t *regs)
                     "r"(syscall)
                   :);
 
-    /* printf("syscall returned %x\n", regs->eax); */
+    /* printf("  syscall returned %x\n", regs->eax); */
     /* print_regs(regs, "after syscall, return to registers"); */
     /* printf("next word at eip %x: %x\n", regs->eip, *(uint32_t *)regs->eip); */
+
+    /* restore_context(&current_task->regs); */
 }
 
 void init_syscalls()

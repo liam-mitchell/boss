@@ -11,6 +11,7 @@
 #include "pmm.h"
 #include "pci.h"
 #include "printf.h"
+#include "ring-buffer.h"
 #include "syscalls.h"
 #include "task.h"
 #include "terminal.h"
@@ -51,7 +52,9 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     init_paging();
 
     asm volatile("sti");
-    timer_init(50);
+    /* timer_init(50); */
+
+    /* init_timer(2); */
 
     init_kheap();
     init_filesystem();

@@ -2,6 +2,7 @@
 
 #include "descriptor_tables.h"
 #include "device_io.h"
+#include "task.h"
 #include "printf.h"
 
 #ifdef __cplusplus
@@ -12,11 +13,12 @@ interrupt_callback callbacks[256];
 
 void interrupt_handler(registers_t *registers)
 {
-    /* printf("Recieved interrupt %x (%d)\n", registers->interrupt, registers->interrupt); */
-    
+    if (current_task) {
+        current_task->regs = *registers;
+    }
+
     if (callbacks[registers->interrupt] != NULL) {
         interrupt_callback cb = callbacks[registers->interrupt];
-        /* printf("Calling callback @%x\n", cb); */
         cb(registers);
     }
 }
@@ -26,8 +28,12 @@ void irq_handler(registers_t *registers)
     outb(0x20, 0x20);
     if (registers->interrupt >= 0x28) outb(0xA0, 0x20);
 
-    if (registers->interrupt > 0x2D) printf("Recieved IRQ %x\n", registers->interrupt);
+    if (current_task) {
+        current_task->regs = *registers;
+    }
 
+    /* if (registers->interrupt > 0x2D) printf("Recieved IRQ %x\n", registers->interrupt); */
+    /* interrupt_handler(registers); */
     if (callbacks[registers->interrupt] != NULL) {
         interrupt_callback cb = callbacks[registers->interrupt];
         cb(registers);

@@ -10,6 +10,7 @@
 #include "memory.h"
 #include "mboot.h"
 #include "printf.h"
+#include "task.h"
 #include "terminal.h"
 #include "vmm.h"
 
@@ -280,6 +281,10 @@ static void page_fault_handler(registers_t *regs)
     uint32_t address;
     asm volatile ("mov %%cr2, %0" : "=r"(address) : : );
 
+    if (current_task) {
+        printf("[PAGE FAULT] current_task: %d\n", current_task->pid);
+    }
+
     printf("[PAGE FAULT] address: %x (%s %s %s page)\n", address,
            (regs->error & 0x4) ? "user" : "kernel",
            (regs->error & 0x2) ? "write to" : "read from",
@@ -307,6 +312,9 @@ static void page_fault_handler(registers_t *regs)
            regs->esi,
            regs->edi);
 
+    if (!(regs->error & 0x4)) {
+        PANIC("Kernel page fault!");
+    }
 }
 
 void init_paging()

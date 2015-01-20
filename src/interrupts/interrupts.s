@@ -22,7 +22,7 @@ isr_common:
 	call interrupt_handler
 
 	add esp, 4
-   
+
 	pop eax
 	mov ds, ax
 	mov es, ax
@@ -59,15 +59,12 @@ irq_common:
 	popa
 	add esp, 8
 	iret
-
-read_eip:
-        pop eax
-        jmp eax
         
 %macro ISR_NOERROR 1
 [GLOBAL isr%1]
 isr%1:
-	cli
+        ;; cli
+        ;; sti
 	push 0
 	push %1
 	jmp isr_common
@@ -76,8 +73,9 @@ isr%1:
 
 %macro ISR_ERROR 1
 [GLOBAL isr%1]
-isr%1:  
-	cli
+isr%1:
+        ;; cli
+        ;; sti
 	push %1
 	jmp isr_common
 %endmacro
@@ -85,6 +83,8 @@ isr%1:
 %macro IRQ 2
 [GLOBAL irq%1]
 irq%1:
+        ;; cli
+        ;; sti
         push 0
 	push %2
 	jmp irq_common

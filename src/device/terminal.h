@@ -12,6 +12,10 @@
  * background color from 8-bit unsigned int
  */
 
+/* terminal dimensions */
+#define VGA_WIDTH (80)
+#define VGA_HEIGHT (25)
+
 typedef enum vga_color 
 {
 	COLOR_BLACK = 0,

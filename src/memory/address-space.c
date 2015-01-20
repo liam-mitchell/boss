@@ -91,7 +91,7 @@ address_space_t *clone_address_space()
     address_space_t *as = kzalloc(MEM_GEN, sizeof(*as));
 
     as->pgdir = clone_page_directory();
-    as->brk = run_queue->as->brk;
+    as->brk = current_task->as->brk;
     return as;
 }
 
@@ -127,7 +127,9 @@ static void switch_page_table(const address_space_t *as, uint32_t virtual)
 
 void switch_address_space(address_space_t *old, const address_space_t *new)
 {
-    asm volatile ("cli");
+    if (old == new) {
+        return;
+    }
 
     save_address_space(old);
 
@@ -137,6 +139,4 @@ void switch_address_space(address_space_t *old, const address_space_t *new)
     {
         switch_page_table(new, virtual);
     }
-
-    asm volatile ("sti");
 }

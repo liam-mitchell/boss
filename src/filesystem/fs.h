@@ -54,7 +54,7 @@ typedef struct inode {
 } inode_t;
 
 typedef struct inode_ops {
-    int (*create)(inode_t *, inode_t *);
+    int (*create)(inode_t *, char *, uint32_t);
     int (*remove)(inode_t *, inode_t *);
     uint32_t (*lookup)(inode_t *, char *);
 } inode_ops_t;
@@ -67,7 +67,7 @@ typedef struct file {
     file_ops_t *ops;
 } file_t;
 
-typedef struct file_ops {
+ typedef struct file_ops {
     uint32_t (*read)(file_t *, uint32_t *, uint32_t, void *);
     uint32_t (*write)(file_t *, uint32_t *, uint32_t, void *);
     int (*open)(file_t *, inode_t *, uint8_t);

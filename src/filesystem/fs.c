@@ -1,5 +1,6 @@
 #include "fs.h"
 
+#include "devfs.h"
 #include "initrd.h"
 #include "kheap.h"
 #include "ldsymbol.h"
@@ -41,6 +42,9 @@ void init_filesystem()
 {
     superblock_t *init = init_initrd((uint32_t)ld_initrd);
     mount(init);
+
+    superblock_t *dev = init_devfs();
+    mount(dev);
 }
 
 static const char *next_component(char *dest, const char *pathname)
@@ -80,26 +84,22 @@ file_t *open_path(const char *pathname, const uint8_t mode)
         return NULL;
     }
 
-    inode_t *inode = mount->mount;
+    inode_t inode = *mount->mount;
 
     while (pathname < pathname_end) {
         pathname = next_component(component, pathname);
-        uint32_t ino = vfs_lookup(inode, component);
+        uint32_t ino = vfs_lookup(&inode, component);
 
         if (ino == 0) {
             return NULL;
         }
 
-        if (inode != mount->mount) {
-            kfree(inode);
-        }
-
-        inode = kzalloc(MEM_GEN, sizeof(*inode));
-        inode->ino = ino;
-        vfs_read_inode(mount, inode);
+        inode.ino = ino;
+        vfs_read_inode(mount, &inode);
     }
 
     file_t *file = kzalloc(MEM_GEN, sizeof(*file));
-    vfs_open(file, inode, mode);
+    vfs_open(file, &inode, mode);
+    
     return file;
 }

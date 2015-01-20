@@ -12,10 +12,6 @@ EXTERN
 
 extern ldsymbol ld_screen;
 
-/* terminal dimensions */
-static const size_t VGA_WIDTH = 80;
-static const size_t VGA_HEIGHT = 25;
-
 /* terminal location */
 static size_t terminal_row = 0;
 static size_t terminal_column = 0;

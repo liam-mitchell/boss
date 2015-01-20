@@ -8,9 +8,11 @@ int errno;
 #define EBADF  9
 #define ENOMEM 12
 #define EFAULT 14
+#define EBUSY  16
 #define ENODIR 20
 #define EISDIR 21
 #define EINVAL 22
+#define ENFILE 23
 #define ENOSYS 38
 
 char *strerror(int err);
