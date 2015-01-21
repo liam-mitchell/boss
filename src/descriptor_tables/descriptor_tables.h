@@ -45,4 +45,6 @@ void flush_idt();
 void enable_irq(uint8_t irq);
 void disable_irq(uint8_t irq);
 
+void set_esp0(uint32_t new);
+
 #endif // __DESCRIPTOR_TABLES_H

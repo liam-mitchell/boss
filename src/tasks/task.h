@@ -16,6 +16,8 @@ typedef struct task {
     registers_t regs;
     address_space_t *as;
 
+    uint32_t esp0;
+
     uint32_t pid;
     /* uint32_t state; */
 

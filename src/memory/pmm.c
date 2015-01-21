@@ -137,26 +137,13 @@ void dma_free_frames(uint32_t physical, uint32_t n)
     dma_set_frames(physical, n, false);
 }
 
-uint32_t _alloc_frame()
-{
-    uint32_t ret = free_stack_top;
-
-    printf("allocating frame %x (free_stack_top %x)\n", ret, free_stack_top);
-    uint32_t virtual = map_physical(ret);
-    memcpy(&free_stack_top, (void *)virtual, sizeof(free_stack_top));
-    unmap_page(virtual);
-    printf("free stack top now %x\n", free_stack_top);
-    while(1);
-
-    return ret;
-}
-
 uint32_t alloc_frame()
 {
     uint32_t ret = free_stack_top;
 
     uint32_t virtual = map_physical(ret);
     memcpy(&free_stack_top, (void *)virtual, sizeof(free_stack_top));
+    memset((void *)virtual, 0, PAGE_SIZE);
     unmap_page(virtual);
 
     return ret;

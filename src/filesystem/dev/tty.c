@@ -32,7 +32,7 @@ static struct file_ops tty_fops = {
 static uint32_t tty_read(file_t __unused *file, uint32_t __unused *offset,
                          uint32_t size, void *buf)
 {
-    printf("tty_read: reading from tty\n");
+    /* printf("tty_read: reading from tty\n"); */
     uint32_t ret = size;
 
     /* while (current_task->pid != tty.fg_pid) { */
@@ -58,7 +58,7 @@ static uint32_t tty_read(file_t __unused *file, uint32_t __unused *offset,
         ++buf;
     }
 
-    printf("tty_read: read from tty\n");
+    /* printf("tty_read: read from tty\n"); */
 
     return ret;
 }

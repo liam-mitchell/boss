@@ -50,7 +50,7 @@ static int sys_fork()
 
 static int sys_read(int fd, char __user *buf, uint32_t len)
 {
-    printf("sys_read: handling read syscall from pid %d at %x\n", current_task->pid, current_task->regs.eip);
+    /* printf("sys_read: handling read syscall from pid %d at %x\n", current_task->pid, current_task->regs.eip); */
     if (!check_user_ptr(buf) || !check_user_ptr(buf + len)) {
         return -EFAULT;
     }
@@ -66,7 +66,7 @@ static int sys_read(int fd, char __user *buf, uint32_t len)
 
 static int sys_write(int fd, char __user *buf, uint32_t len)
 {
-    printf("sys_write: handling write syscall from pid %d: %s\n", current_task->pid, buf);
+    /* printf("sys_write: handling write syscall from pid %d: %s (len %d)\n", current_task->pid, buf, len); */
     if (!check_user_ptr(buf) || !check_user_ptr(buf + len)) {
         return -EFAULT;
     }

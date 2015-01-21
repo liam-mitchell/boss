@@ -31,4 +31,15 @@ void *alignp(void *x, uint32_t a)
     return (void *)align((uint32_t)x, a);
 }
 
+static inline
+uint32_t align_down(uint32_t x, uint32_t a)
+{
+    uint32_t aligned = align(x, a);
+    if (aligned != x) {
+        aligned -= a;
+    }
+
+    return aligned;
+}
+
 #endif // __COMPILER_H_

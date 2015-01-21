@@ -37,6 +37,8 @@ static uint32_t clone_page(uint32_t virtual)
         return *page;
     }
 
+    /* printf("cloning user page at vaddr %x (page %x)\n", virtual, *page); */
+
     uint32_t new = alloc_frame();
 
     uint32_t vnew = map_physical(new);
@@ -75,11 +77,15 @@ static uint32_t *clone_page_table(uint32_t virtual)
 static uint32_t **clone_page_directory()
 {
     uint32_t **pgdir = kzalloc(MEM_GEN, PAGE_SIZE);
+    if (!pgdir) {
+        return NULL;
+    }
     
     for (uint32_t virtual = 0;
          virtual < (uint32_t)ld_virtual_offset;
          virtual += PAGE_SIZE * PAGE_SIZE / 4)
     {
+        /* printf("cloning page table %x\n", virtual); */
         pgdir[DIRINDEX(virtual)] = clone_page_table(virtual);
     }
 
@@ -88,9 +94,19 @@ static uint32_t **clone_page_directory()
 
 address_space_t *clone_address_space()
 {
+    /* printf("cloning address space...\n"); */
     address_space_t *as = kzalloc(MEM_GEN, sizeof(*as));
+    if (!as) {
+        return NULL;
+    }
 
+    /* printf("cloning page directory...\n"); */
     as->pgdir = clone_page_directory();
+    if (!as->pgdir) {
+        kfree(as);
+        return NULL;
+    }
+
     as->brk = current_task->as->brk;
     return as;
 }

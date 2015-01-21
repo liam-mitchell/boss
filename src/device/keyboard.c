@@ -37,11 +37,11 @@ static void keyboard_handler(registers_t __unused *regs)
     unsigned char key = keymap_us[keycode];
 
     if (tty && !KEY_IS_UP(scancode)) {
-        printf("keyboard_handler: read key %c from keyboard\n", key);
+        /* printf("keyboard_handler: read key %c from keyboard\n", key); */
         ring_buffer_write(tty->kbd_in, &mods, sizeof(mods));
         ring_buffer_write(tty->kbd_in, &key, sizeof(scancode));
         wake(tty->fg_pid);
-        printf("keyboard_handler: wrote ring buffer 2 bytes\n");
+        /* printf("keyboard_handler: wrote ring buffer 2 bytes\n"); */
     }
 
     if (KEY_IS_UP(scancode)) {
@@ -75,7 +75,7 @@ static void keyboard_handler(registers_t __unused *regs)
         }
     }
 
-    printf("keyboard_handler: exiting\n");
+    /* printf("keyboard_handler: exiting\n"); */
 }
 
 void init_keyboard(void)

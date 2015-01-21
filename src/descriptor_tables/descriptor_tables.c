@@ -326,3 +326,10 @@ void disable_irq(uint8_t irq)
         outb(PIC1_D, mask);
     }
 }
+
+
+void set_esp0(uint32_t new)
+{
+    /* printf("setting esp0 to %x\n", new); */
+    tss.esp0 = new;
+}

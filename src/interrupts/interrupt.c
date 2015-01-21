@@ -15,6 +15,7 @@ void interrupt_handler(registers_t *registers)
 {
     if (current_task) {
         current_task->regs = *registers;
+        current_task->esp0 = (uint32_t)registers + sizeof(*registers) - 20;
     }
 
     if (callbacks[registers->interrupt] != NULL) {
@@ -30,6 +31,7 @@ void irq_handler(registers_t *registers)
 
     if (current_task) {
         current_task->regs = *registers;
+        current_task->esp0 = (uint32_t)registers + sizeof(*registers) - 20;
     }
 
     /* if (registers->interrupt > 0x2D) printf("Recieved IRQ %x\n", registers->interrupt); */
