@@ -32,9 +32,10 @@ static void terminal_scroll()
         }
     }
 
-    for (size_t x = 0; x < VGA_WIDTH; ++x)
+    for (size_t x = 0; x < VGA_WIDTH; ++x) {
         terminal_buffer[(VGA_HEIGHT - 1) * VGA_WIDTH + x] =
             make_vgachar(' ', terminal_color);
+    }
 
     --terminal_row;
 }
@@ -64,7 +65,7 @@ uint16_t make_vgachar(char c, uint8_t col)
  * memory-mapped location of the VGA buffer for the screen
  * as well as characters to blank black
  */
-void terminal_init()
+void init_terminal()
 {
     terminal_row = 0;
     terminal_column = 0;

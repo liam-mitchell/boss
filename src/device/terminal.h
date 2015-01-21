@@ -16,7 +16,7 @@
 #define VGA_WIDTH (80)
 #define VGA_HEIGHT (25)
 
-typedef enum vga_color 
+typedef enum
 {
 	COLOR_BLACK = 0,
 	COLOR_BLUE,
@@ -39,7 +39,7 @@ typedef enum vga_color
 uint8_t make_color(vga_color fg, vga_color bg);
 uint16_t make_vgachar(char c, uint8_t col);
 
-void terminal_init();
+void init_terminal();
 void terminal_setcolor(uint8_t color);
 void terminal_putentryat(char c, uint8_t color, size_t x, size_t y);
 void putc(char c);

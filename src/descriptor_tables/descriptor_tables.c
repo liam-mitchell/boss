@@ -222,18 +222,6 @@ static void idt_init()
     puts("IDT flushed.\n");
 }
 
-/* static void gdt_set_gate(int32_t entry, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity) */
-/* { */
-/* 	gdt_entries[entry].base_low = base & 0xFFFF; // lower 16 bits of base */
-/* 	gdt_entries[entry].base_middle = (base >> 16) & 0xFF; // middle 8 bits */
-/* 	gdt_entries[entry].base_high = (base >> 24) & 0xFF; */
-
-/* 	gdt_entries[entry].limit_low = limit & 0xFFFF; */
-/* 	gdt_entries[entry].granularity = (limit >> 16) & 0x0F; */
-/* 	gdt_entries[entry].granularity |= granularity & 0xF0; */
-/* 	gdt_entries[entry].access = access; */
-/* } */
-
 static void gdt_set_gate(uint32_t entry, uint32_t base,
                          uint32_t limit, uint8_t access)
 {
@@ -299,7 +287,6 @@ void flush_idt()
 
 void enable_irq(uint8_t irq)
 {
-    printf("Enabling irq %d\n", irq);
     if (irq < 8) {
         uint8_t mask = inb(PIC1_D);
         SET_BIT(mask, irq);
@@ -314,7 +301,6 @@ void enable_irq(uint8_t irq)
 
 void disable_irq(uint8_t irq)
 {
-    printf("Disabling irq %d\n", irq);
     if (irq < 8) {
         uint8_t mask = inb(PIC1_D);
         CLR_BIT(mask, irq);
@@ -330,6 +316,5 @@ void disable_irq(uint8_t irq)
 
 void set_esp0(uint32_t new)
 {
-    /* printf("setting esp0 to %x\n", new); */
     tss.esp0 = new;
 }
