@@ -19,9 +19,7 @@ void mount(superblock_t *sb)
     sb->next = NULL;
 
     if (mounts == NULL) {
-        puts("mounted fs: ");
-        puts(sb->name);
-        putc('\n');
+        printf("mounted filesystem: %s\n", sb->name);
         mounts = sb;
         return;
     }
@@ -32,10 +30,7 @@ void mount(superblock_t *sb)
     }
 
     curr->next = sb;
-
-    puts("mounted fs: ");
-    puts(sb->name);
-    putc('\n');
+    printf("mounted filesystem: %s\n", sb->name);
 }
 
 void init_filesystem()

@@ -4,16 +4,13 @@
 
 #include "terminal.h"
 
-void printf(const char *format, ...)
+void vprintf(const char *format, va_list args)
 {
-    va_list args;
     char c;
     int i;
     unsigned int u;
     char *s;
 
-    va_start(args, format);
-    
     while ((c = *format++)) {
         if (c != '%') {
             putc(c);
@@ -47,4 +44,14 @@ void printf(const char *format, ...)
             }
         }
     }
+}
+
+void printf(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    vprintf(format, args);
+
+    va_end(args);
 }

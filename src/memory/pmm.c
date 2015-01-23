@@ -40,6 +40,20 @@ extern ldsymbol ld_physical_end;
 static uint32_t free_stack_top;
 static uint32_t dma_bitmap[PMM_DMA_NPAGES / 32];
 
+/**
+ * DMA functions
+ *
+ * Metadata about DMA memory is maintained via a bitmap (since the free frame
+ *   stack used for non-DMA memory can't return contiguous frames without a lot
+ *   of effort).
+ *
+ * These functions are used by kmalloc(MEM_DMA, x) to return page-aligned,
+ *   contiguous sections of memory.
+ *
+ * TODO: This may or may not be supposed to return successfully on allocations
+ *   of over 64k - dig into the PCI spec and see if that's something for ATA
+ *   or PCI drives or just for DMA on x86 in general
+ */
 static uint32_t dma_start()
 {
     return align((uint32_t)ld_physical_end, PAGE_SIZE);
@@ -92,25 +106,30 @@ static void dma_set_frames(uint32_t physical, uint32_t n, bool allocated)
 static bool dma_frame_is_free(uint32_t physical)
 {
     if (!check_dma_address(physical)) {
-        printf("Address was not valid DMA address: %x\n", physical);
         return false;
     }
 
     uint32_t index = dma_index(physical);
     uint32_t bit = dma_bit(physical);
-    printf("Address was valid DMA address: bitmap at index %x (checking bit %d)\n", dma_bitmap[index], bit);
 
     return !TST_BIT(dma_bitmap[index], bit);
 }
 
 static bool dma_frames_are_free(uint32_t physical, uint32_t n)
 {
-    printf("Checking if %x DMA frames are free at %x\n", n, physical);
     for (uint32_t i = 0; i < n; ++i) {
         if (!dma_frame_is_free(physical + i * PAGE_SIZE)) {
-            printf("Frame %x was not free\n", i);
             return false;
         }
+    }
+
+    return true;
+}
+
+bool check_dma_address(uint32_t physical)
+{
+    if (physical < dma_start() || physical > dma_end()) {
+        return false;
     }
 
     return true;
@@ -122,7 +141,6 @@ uint32_t dma_alloc_frames(uint32_t n)
          physical < dma_end();
          physical += PAGE_SIZE)
     {
-        printf("Checking DMA address %x\n", physical);
         if (dma_frames_are_free(physical, n)) {
             dma_set_frames(physical, n, true);
             return physical;
@@ -137,12 +155,23 @@ void dma_free_frames(uint32_t physical, uint32_t n)
     dma_set_frames(physical, n, false);
 }
 
+/**
+ * General memory allocator
+ *
+ * This function relies on the free frame stack being set up by init_pmm(),
+ *   but once that's all ready returning a page is incredibly simple - read
+ *   the first word from the free frame into free_stack_top(), then return
+ *   the old free_stack_top.
+ */
 uint32_t alloc_frame()
 {
     uint32_t ret = free_stack_top;
 
     uint32_t virtual = map_physical(ret);
     memcpy(&free_stack_top, (void *)virtual, sizeof(free_stack_top));
+
+    // TODO: this probably could be zeroed somewhere better,
+    // it's unlikely we need to zero it every time we allocate a frame
     memset((void *)virtual, 0, PAGE_SIZE);
     unmap_page(virtual);
 
@@ -155,6 +184,16 @@ void free_frame(uint32_t virtual)
     free_stack_top = get_physical(virtual);
 }
 
+/**
+ * Physical memory manager initialization functions
+ *
+ * Only to be called during boot time (before kernel_main()). These functions
+ *   rely on paging not being enabled yet and therefore use physical addresses
+ *   for all pointers.
+ *
+ * TODO: do like Linux and put these functions (and all init_X() functions)
+ *   into their own section to be freed just before init_scheduler()
+ */
 static inline
 int mem_range_is_free(multiboot_info_t *mboot_info,
                       uint32_t start, uint32_t end)
@@ -235,12 +274,13 @@ static uint32_t init_pmm_general(multiboot_info_t *mboot)
 }
 
 /**
- * Initialize the free frame stack by embedding a pointer to the next
- * free frame in the first word of of each free frame
+ * Initialize the physical memory manager.
  *
- * This requires the virtual memory manager to return us each free frame pointer
- * once it maps the frame into virtual memory - however, it requires only four
- * bytes of memory for the physical memory manager total!
+ * DMA memory is initialized by zeroing the DMA bitmap then setting bits
+ *   for each frame that is free in the DMA low memory range.
+ *
+ * General memory is initialized by embedding the address of the last free
+ *   frame into the first free word of the next frame, forming a stack.
  */
 uint32_t init_pmm(multiboot_info_t *mboot)
 {
@@ -252,15 +292,6 @@ uint32_t init_pmm(multiboot_info_t *mboot)
     uint32_t gen_frames = init_pmm_general(mboot);
 
     return dma_frames + gen_frames;
-}
-
-bool check_dma_address(uint32_t physical)
-{
-    if (physical < dma_start() || physical > dma_end()) {
-        return false;
-    }
-
-    return true;
 }
 
 static void page_fault_handler(registers_t *regs)

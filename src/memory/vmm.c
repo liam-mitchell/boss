@@ -13,6 +13,16 @@ extern ldsymbol ld_temp_pages_end;
 static int map_page(uint32_t virtual, uint32_t physical,
                     uint8_t readonly, uint8_t kernel);
 
+/**
+ * The following three functions return information associated with
+ * a virtual address in the x86 paging structures:
+ *
+ * get_page_directory_entry(): returns the PDE for the virtual address
+ * get_page_table(): returns a (virtual) pointer to the page table associated
+ *                     with the virtual address (ie. an array of page table
+ *                     entries)
+ * get_page(): returns the page table entry associated with the virtual address
+ */
 uint32_t **get_page_directory_entry(uint32_t virtual)
 {
     return (uint32_t **)0xFFFFF000 + DIRINDEX(virtual);
@@ -28,6 +38,14 @@ uint32_t *get_page(uint32_t virtual)
     return (uint32_t *)get_page_table(virtual) + TBLINDEX(virtual);
 }
 
+/**
+ * Maps a physical address temporarily into the kernel address space.
+ * Returns the virtual address the physical address was mapped to (to be passed
+ *   back to unmap_page()).
+ *
+ * TODO: this currently returns null if there's no room in the kernel temporary
+ *   tables! should sleep() until there are temp pages available
+ */
 uint32_t map_physical(uint32_t physical)
 {
     for (uint32_t virtual = (uint32_t)ld_temp_pages;
@@ -103,15 +121,8 @@ static int map_page(uint32_t virtual, uint32_t physical,
             return -ENOMEM;
         }
 
-        *direntry =
-            (uint32_t *)((frame & 0xFFFFF000)
-                         | PG_USER
-                         | PG_PRESENT
-                         | PG_WRITEABLE);
-
-        printf("Allocated a new directory entry\n");
-
-        memset(get_page_table(virtual), 0, PAGE_SIZE);
+        frame |= PG_USER | PG_PRESENT | PG_WRITEABLE;
+        *direntry = (uint32_t *)frame;
     }
 
     uint32_t *page = get_page(virtual);
@@ -120,18 +131,8 @@ static int map_page(uint32_t virtual, uint32_t physical,
         return -EINVAL;
     }
 
-    /* *page |= PG_PRESENT; */
-
-    /* if (!readonly) { */
-    /*     *page |= PG_WRITEABLE; */
-    /* } */
-
-    /* if (!kernel) { */
-    /*     *page |= PG_USER; */
-    /* } */
-
     set_page_attributes(page, true, !readonly, !kernel);
-    *page |= physical & 0xFFFFF000;
+    *page |= PG_FRAME(physical);
 
     flush_tlb(virtual);
     return 1;
@@ -139,7 +140,6 @@ static int map_page(uint32_t virtual, uint32_t physical,
 
 int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel)
 {
-    /* printf("Allocating page at virtual address %x\n", virtual); */
     uint32_t physical = alloc_frame();
 
     if (!physical) {

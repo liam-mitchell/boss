@@ -133,6 +133,8 @@ static void switch_page_table(const address_space_t *as, uint32_t virtual)
     uint32_t **new_pde = &as->pgdir[DIRINDEX(virtual)];
 
     if (!PG_FRAME((uint32_t)*pde != PG_FRAME((uint32_t)*new_pde))) {
+        /* printf("switching page table %x to %x\n", *pde, *new_pde); */
+
         *pde = *new_pde;
 
         for (uint32_t i = 0; i < PAGE_SIZE / 4; ++i) {

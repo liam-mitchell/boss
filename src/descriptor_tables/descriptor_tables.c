@@ -13,7 +13,30 @@
 #define PIC2_C 0xA0
 #define PIC2_D 0xA1
 
-typedef volatile struct tss {
+struct gdt_ptr {
+    uint16_t limit;
+    uint32_t base;
+} __packed;
+
+struct gdt_entry {
+    uint32_t low;
+    uint32_t high;
+};
+
+struct idt_ptr {
+    uint16_t limit;
+    uint32_t base;
+} __packed;
+
+struct idt_entry {
+    uint16_t base_low;
+    uint16_t segment;
+    uint8_t zero;
+    uint8_t type_attr;
+    uint16_t base_high;
+};
+
+struct tss {
     uint16_t link;
     uint16_t unused1;
     uint32_t esp0;
@@ -52,9 +75,9 @@ typedef volatile struct tss {
     uint16_t unused11;
     uint16_t unused12;
     uint16_t iopb_offset;
-} tss_t;
+};
 
-static tss_t tss;
+static volatile struct tss tss;
 
 extern void gdt_flush(uint32_t ptr);
 extern void idt_flush(uint32_t ptr);
@@ -64,7 +87,8 @@ static void gdt_set_gate(uint32_t entry, uint32_t base,
                          uint32_t limit, uint8_t access);
 
 static void idt_init();
-static void idt_set_gate(uint8_t entry, uint32_t base, uint32_t segment, uint8_t type_attr);
+static void idt_set_gate(uint8_t entry, uint32_t base,
+                         uint32_t segment, uint8_t type_attr);
 
 static void pic_remap(int master, int slave);
 
@@ -120,10 +144,10 @@ extern void isr128();
 
 extern ldsymbol ld_tss_stack;
 
-gdt_entry_t gdt_entries[6];
-idt_entry_t idt_entries[256];
-gdt_ptr_t gdt_ptr;
-idt_ptr_t idt_ptr;
+struct gdt_entry gdt_entries[6];
+struct idt_entry idt_entries[256];
+struct gdt_ptr gdt_ptr;
+struct idt_ptr idt_ptr;
 
 void init_descriptor_tables() 
 {
@@ -132,16 +156,38 @@ void init_descriptor_tables()
     idt_init();
 }
 
+/**
+ * Load the TSS selector in the GDT into the task register
+ */
 static void load_task_register(uint16_t selector)
 {
     asm volatile ("ltr %0" : : "r"(selector) : );
 }
 
+/**
+ * Initialize the global descriptor table
+ * 
+ * There are certain segments which absolutely MUST be in the x86 GDT:
+ *  - Null descriptor (gate 0, descriptor 0x0) - must be zeroed
+ *  - Kernel CS (gate 1, descriptor 0x08)
+ *  - Kernel DS (gate 2, descriptor 0x10)
+ *  - User CS (gate 3, descriptor 0x18)
+ *  - User DS (gate 4, descriptor 0x20)
+ *  - TSS descriptor - must hold the address of the task state segment
+ *        for the processor. The stack pointer is reloaded from the
+ *        ss0:esp0 fields in the TSS on task switches (int 0x80).
+ *        In our implementation this is gate 5, descriptor 0x28 - however,
+ *        this particular placement is NOT required.
+ *
+ * The above segments are mandated by Intel in order to transfer control
+ *  from CPL 3 to CPL 0 (and back again). Other than that, we don't use
+ *  the GDT at all ;)
+ */
 static void gdt_init() 
 {
     puts("Initializing GDT...\n");
 
-    gdt_ptr.limit = (sizeof(gdt_entry_t) * 6) - 1;
+    gdt_ptr.limit = (sizeof(struct gdt_entry) * 6) - 1;
     gdt_ptr.base = (uint32_t)&gdt_entries;
     gdt_set_gate(0, 0, 0, 0);
     gdt_set_gate(1, 0, 0xFFFFFFFF, 0x9A); // CS
@@ -159,12 +205,20 @@ static void gdt_init()
     load_task_register(0x28);
 }
 
+/**
+ * Initialize the interrupt descriptor table
+ *
+ * Each interrupt the kernel wishes to handle must be entered in the IDT.
+ * The isrN and irqN functions here are assembler stubs (see interrupts.s)
+ * which simply save the appropriate thread context and interrupt code and
+ * jump to the registered handler (see interrupt.c).
+ */
 static void idt_init()
 {
     puts("Initializing IDT...\n");
-    idt_ptr.limit = (sizeof(idt_entry_t) * 256) - 1;
+    idt_ptr.limit = (sizeof(struct idt_entry) * 256) - 1;
     idt_ptr.base = (uint32_t)&idt_entries;
-    memset(&idt_entries, 0, sizeof(idt_entry_t) * 256);
+    memset(&idt_entries, 0, sizeof(struct idt_entry) * 256);
     pic_remap(0x20, 0x28);
 
     idt_set_gate(0, (uint32_t)isr0, 0x08, 0x8E);
@@ -225,20 +279,25 @@ static void idt_init()
 static void gdt_set_gate(uint32_t entry, uint32_t base,
                          uint32_t limit, uint8_t access)
 {
-    gdt_entries[entry].base_low = base & 0xFFFF;
-    gdt_entries[entry].base_middle = (base >> 16) & 0xFF;
-    gdt_entries[entry].base_high = (base >> 24) & 0xFF;
-
-    gdt_entries[entry].flags = 0x4;
-    gdt_entries[entry].access = access;
-
+    uint32_t flags = (1 << 2);
     if (limit > 0xFFFF) {
         limit = limit >> 12;
-        gdt_entries[entry].flags |= (1 << 3);
+        flags |= (1 << 3);
     }
 
-    gdt_entries[entry].limit_low = limit & 0xFFFF;
-    gdt_entries[entry].limit_high = (limit >> 16) & 0xF;
+    uint32_t limit_low = limit & 0xFFFF;
+    uint32_t limit_high = (limit >> 16) & 0xF;
+
+    uint32_t base_low = base & 0xFFFF;
+    uint32_t base_middle = (base >> 16) & 0xFF;
+    uint32_t base_high = (base >> 24) & 0xFF;
+
+    uint32_t entry_low = limit_low | (base_low << 16);
+    uint32_t entry_high = base_middle | (access << 8) | (limit_high << 16)
+        | (flags << 20) | (base_high << 24);
+
+    gdt_entries[entry].low = entry_low;
+    gdt_entries[entry].high = entry_high;
 }
 
 static void idt_set_gate(uint8_t entry, uint32_t base, uint32_t segment, uint8_t type_attr)
@@ -258,21 +317,16 @@ static void pic_remap(int master, int slave)
     mask2 = inb(PIC2_D);
 
     outb(PIC1_C, 0x11); // start initialization sequence
-    io_wait();
     outb(PIC2_C, 0x11);
-    io_wait();
+
     outb(PIC1_D, master); // vector offsets (new ISR numbers)
-    io_wait();
     outb(PIC2_D, slave);
-    io_wait();
+
     outb(PIC1_D, 0x04); // daisy-chaining IRQ locations
-    io_wait();
     outb(PIC2_D, 0x02);
-    io_wait();
+
     outb(PIC1_D, 0x01); // 8088 mode
-    io_wait();
     outb(PIC2_D, 0x01);
-    io_wait();
 
     outb(PIC1_D, mask1);
     outb(PIC2_D, mask2);
@@ -293,7 +347,7 @@ void enable_irq(uint8_t irq)
         outb(PIC1_D, mask);
     }
     else {
-        uint8_t mask = inb(PIC1_D);
+        uint8_t mask = inb(PIC2_D);
         SET_BIT(mask, irq - 8);
         outb(PIC1_D, mask);
     }
@@ -307,12 +361,11 @@ void disable_irq(uint8_t irq)
         outb(PIC1_D, mask);
     }
     else {
-        uint8_t mask = inb(PIC1_D);
+        uint8_t mask = inb(PIC2_D);
         CLR_BIT(mask, irq - 8);
         outb(PIC1_D, mask);
     }
 }
-
 
 void set_esp0(uint32_t new)
 {

@@ -55,8 +55,6 @@ static int devfs_create(struct inode *inode, char *name, uint32_t permissions)
         return -ENFILE;
     }
 
-    printf("Allocated inode for device file %s\n", name);
-
     new->permissions = permissions;
     devfs_files[new->ino].name = kzalloc(MEM_GEN, strlen(name) + 1);
     strncpy(devfs_files[new->ino].name, name, strlen(name));
@@ -70,7 +68,6 @@ static void devfs_read_inode(struct superblock __unused *sb,
                              struct inode *inode)
 {
     if (inode->ino >= devfs_nfiles) {
-        PANIC("Tried to read from devfs inode that didn't exist!");
         return;
     }
 
@@ -125,15 +122,16 @@ superblock_t *init_devfs(void)
     devfs_files[0].name = kzalloc(MEM_GEN, strlen(name) + 1);
     strncpy(devfs_files[0].name, name, strlen(name));
 
-    printf("Allocated root inode at %x, mount %x\n", root, mount);
     init_tty();
     return mount;
 }
 
+/**
+ * Create a device file with custom fops to allow devices to register
+ * themselves in dev/
+ */
 int create_device_file(struct file_ops *fops, char *name, uint32_t permissions)
 {
-    printf("Creating device file %s\n", name);
-
     int err = devfs_create(devfs_files[0].inode, name, permissions);
     if (err < 0) {
         return err;
@@ -141,14 +139,10 @@ int create_device_file(struct file_ops *fops, char *name, uint32_t permissions)
 
     uint32_t i = devfs_lookup(devfs_files[0].inode, name);
     if (i) {
-        printf("Looked up device file %s\n", name);
         devfs_files[i].file->ops = fops;
         devfs_files[i].inode->fops = fops;
         return 0;
     }
 
-    printf("Failed to look up device file %s\n", name);
-    while(1);
-
-    return -EBADF;
+    return -EBADF; // TODO: did we really get a bad file descriptor?...
 }

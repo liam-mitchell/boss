@@ -35,6 +35,7 @@ int fork(void);
 
 void sleep(void);
 void wake(uint32_t pid);
+void switch_tasks(void);
 
 void print_regs(registers_t *regs, char *msg);
 

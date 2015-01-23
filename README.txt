@@ -13,7 +13,6 @@ Contents:
   3. Building the kernel
   4. Kernel features walkthrough
 
-
 ** 1. REPOSITORY INFORMATION **
 
 At the root of the repository are several core files:
@@ -64,6 +63,10 @@ are the dev/ and init/ filesystems, this means the only programs available
 to be loaded are trash itself (/init/bin/trash), hello (/init/bin/hello) and
 goodbye (/init/bin/goodbye). hello and goodbye will simply print a message to
 the screen and loop forever (since no exit() system call is implemented yet).
+
+Also due to no exit() system call, there is no ability to wait for a child
+to finish executing - so trash always prints out its prompt immediately after
+exec() instead of executing the child then reprinting its prompt.
 
 trash is also unable to backspace (a crippling flaw - but nobody said it was
 a *good* shell ;) so you better get it right the first time!

@@ -22,27 +22,6 @@ static struct task *running;
 static struct task *blocked;
 static struct task *idle;
 
-/* static void print_tasks() */
-/* { */
-/*     printf("idle task %d\n", idle->pid); */
-/*     print_regs(&idle->regs, "idle task regs"); */
-/*     printf("current task %d\n", current_task->pid); */
-/*     print_regs(&current_task->regs, "current task regs"); */
-
-/*     for (task_t *r = running; r; r = r->next) { */
-/*         printf("running task %d\n", r->pid); */
-/*         print_regs(&r->regs, "regs"); */
-/*     } */
-
-/*     for (task_t *b = blocked; b; b = b->next) { */
-/*         printf("blocked task %d\n", b->pid); */
-/*         print_regs(&b->regs, "regs"); */
-/*     } */
-/* } */
-
-extern void save_context(registers_t *old);
-extern void restore_context(registers_t *new);
-
 static void task_list_add(struct task **list, struct task *task)
 {
     if (!task) {
@@ -99,12 +78,16 @@ static task_t *task_list_find(struct task **list, uint32_t pid)
 
 static task_t *alloc_task()
 {
+    printf("allocating task... ");
     task_t *task = kzalloc(MEM_GEN, sizeof(*task));
 
+    printf("kzalloc returned %x\n", task);
     if (!task) {
         errno = -ENOMEM;
         goto error;
     }
+
+    printf("allocated ");
 
     task->as = alloc_address_space();
 
@@ -113,11 +96,12 @@ static task_t *alloc_task()
         goto error_task;
     }
 
-    task->esp0 = (uint32_t)kzalloc(MEM_GEN, PAGE_SIZE);
-    if (!task->esp0) {
-        errno = -ENOMEM;
-        goto error_kstack;
-    }
+    printf("allocated as ");
+    /* task->esp0 = (uint32_t)kzalloc(MEM_GEN, PAGE_SIZE); */
+    /* if (!task->esp0) { */
+    /*     errno = -ENOMEM; */
+    /*     goto error_kstack; */
+    /* } */
 
     /* task->esp0 += PAGE_SIZE - 4; */
 
@@ -129,8 +113,6 @@ static task_t *alloc_task()
 
     return task;
 
- error_kstack:
-    free_address_space(task->as);
  error_task:
     kfree(task);
  error:
@@ -139,16 +121,29 @@ static task_t *alloc_task()
 
 static void halt()
 {
+    /* printf("halting...\n"); */
     while (true) {
         asm volatile ("sti\n\t"
                       "hlt\n\t");
     }
 }
 
+static uint32_t alloc_kstack()
+{
+    uint32_t stack = (uint32_t)kzalloc(MEM_GEN, PAGE_SIZE);
+    return stack + PAGE_SIZE;
+}
+
+static void free_kstack(uint32_t esp0)
+{
+    uint32_t stack_bottom = align_down(esp0, PAGE_SIZE);
+    kfree((void *)stack_bottom);
+}
+
 static void free_task(task_t *task)
 {
     free_address_space(task->as);
-    /* kfree((void *)task->esp0); TODO: free the page... */
+    free_kstack(task->esp0);
     kfree(task);
 }
 
@@ -212,19 +207,27 @@ void print_regs(registers_t *regs, char *msg)
 #define switch_context(old, new) do {                                   \
     set_esp0(new->esp0);                                                \
     uint32_t eax;                                                       \
-    asm volatile ("pushfl\n\t"                                          \
-                  "pushl %%cs\n\t"                                      \
-                  "pushl $.doneswitch\n\t"                              \
-                  "movl %%esp, %0\n\t"                                  \
+    asm volatile (/*"pushfl\n\t"*/                                      \
+                  /*"pushl %%cs\n\t"*/                                  \
+                  /*"pushl $.doneswitch\n\t"*/                          \
+                  /*"movl %%esp, %0\n\t"*/                              \
                   "movl %2, %%esp\n\t"                                  \
-                  "iret\n"                                              \
-                  ".doneswitch:\n\t"                                    \
+                  "pop %%eax\n\t"                                       \
+                  "mov %%ax, %%ds\n\t"                                  \
+                  "mov %%ax, %%es\n\t"                                  \
+                  "mov %%ax, %%fs\n\t"                                  \
+                  "mov %%ax, %%gs\n\t"                                  \
+                  "popa\n\t"                                            \
+                  "add $8, %%esp\n\t"                                   \
+                  "iret\n\t"                                            \
+                  /*"iret\n"*/                                          \
+                  /*".doneswitch:\n\t"*/                                \
                   : "=g"(old->esp0), "=a"(eax)                          \
                   : "g"(new->esp0)                                      \
                   : "%ebx", "%ecx", "%edx", "%esi", "%edi");            \
     } while (0);
 
-static void switch_tasks(/* registers_t *regs */)
+void switch_tasks(/* registers_t *regs */)
 {
     if (!current_task) {
         return;
@@ -268,24 +271,27 @@ static void switch_tasks(/* registers_t *regs */)
     /* print_tasks(); */
 
     /* *regs = current_task->regs; */
-    /* printf("switching tasks from %d to %d\n", old->pid, current_task->pid); */
+    /* if (current_task->pid == 2 || old->pid == 2) */
+        /* printf("switching tasks from %d to %d\n", old->pid, current_task->pid); */
     switch_address_space(old->as, current_task->as);
     /* printf("switched address space\n"); */
+    /* if (current_task->pid == 2 || old->pid == 2) */
     /* printf("switching context... old->esp0 = %x, new->esp0 = %x\n", old->esp0, current_task->esp0); */
-    /* printf("eip %x cs %x eflags %x\n", *(uint32_t *)current_task->esp0, *(uint32_t *)(current_task->esp0 + 4), *(uint32_t *)(current_task->esp0 + 8)); */
+    /* printf("eip %x cs %x eflags %x\n", *(uint32_t *)(current_task->esp0 + 44), *(uint32_t *)(current_task->esp0 + 48), *(uint32_t *)(current_task->esp0 + 52)); */
+    /* printf("old eip %x cs %x eflags %x\n", *(uint32_t *)(old->esp0 + 44), *(uint32_t *)(old->esp0 + 48), *(uint32_t *)(old->esp0 + 52)); */
     /* printf("address of switch_tasks(): %x\n", &switch_tasks); */
     switch_context(old, current_task);
     /* printf("switched context\n"); */
     /* restore_context(&current_task->regs); */
 }
 
-static void timer_handler(registers_t *regs)
+static void timer_handler(registers_t __unused *regs)
 {
     static uint32_t ticks = 0;
     ++ticks;
 
     if (ticks % 5 == 0 && current_task) {
-        current_task->regs = *regs;
+        /* current_task->regs = *regs; */
         switch_tasks();
     }
 }
@@ -394,7 +400,16 @@ static int create_idle_task(void)
         return -ENOMEM;
     }
 
+    idle->esp0 = alloc_kstack();
+    if (!idle->esp0) {
+        kfree(idle);
+        return -ENOMEM;
+    }
+
     uint32_t stack[] = {
+        0x10,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
         (uint32_t)&halt,
         0x08,
         (1 << 9),
@@ -403,6 +418,7 @@ static int create_idle_task(void)
     for (uint32_t i = ARRAY_SIZE(stack); i > 0; --i) {
         idle->esp0 -= sizeof(stack[i - 1]);
         memcpy((void *)idle->esp0, &stack[i - 1], sizeof(stack[i - 1]));
+        printf("wrote %x to idle stack %x\n", stack[i - 1], idle->esp0);
     }
 
     return 0;
@@ -412,15 +428,10 @@ void init_scheduler(void)
 {
     printf("Initializing scheduler...\n");
 
-    asm volatile ("cli");
     int err = create_idle_task();
     if (err < 0) {
         goto error;
     }
-
-    /* printf("Created idle task\n"); */
-    /* printf("idle task eip: %x\n", idle->regs.eip); */
-    /* print_regs(&idle->regs, "idle task regs 0"); */
 
     running = alloc_task();
     if (!running) {
@@ -429,7 +440,6 @@ void init_scheduler(void)
     }
 
     printf("allocated idle and init tasks\n");
-    /* print_regs(&idle->regs, "idle task regs 1"); */
 
     current_task = running;
     register_interrupt_callback(32, &timer_handler);
@@ -443,7 +453,7 @@ void init_scheduler(void)
     }
 
     return;
-    
+
  error:
     printf("[ERROR] Unable to initialize scheduler (%s)\n",
            strerror(-err));
@@ -452,7 +462,7 @@ void init_scheduler(void)
 
 int exec(const char *path)
 {
-    /* printf("in exec: %s\n", path); */
+    printf("in exec: %s\n", path);
     int err = 0;
     file_t *binary = open_path(path, MODE_READ);
     if (!binary) {
@@ -460,7 +470,6 @@ int exec(const char *path)
         goto error;
     }
 
-    /* printf("opened file\n"); */
     void *data = kmalloc(MEM_GEN, binary->length);
     if (!data) {
         err = -ENOMEM;
@@ -473,7 +482,6 @@ int exec(const char *path)
         goto error_filedata;
     }
 
-    /* printf("read data from file\n"); */
     if (current_task->as) {
         free_address_space(current_task->as);
     }
@@ -484,25 +492,27 @@ int exec(const char *path)
         goto error_filedata;
     }
 
-    /* printf("allocated new address space for task\n"); */
+    current_task->esp0 = alloc_kstack();
+    if (!current_task->esp0) {
+        goto error_as;
+    }
+
     err = map_data(current_task->as, len, data);
     if (err < 0) {
-        goto error_as;
+        goto error_kstack;
     }
 
     err = map_stack(current_task->as);
     if (err < 0) {
-        goto error_as;
+        goto error_kstack;
     }
 
-    /* printf("mapped stack and data for task\n"); */
     init_exec_registers(&current_task->regs);
     switch_address_space(NULL, current_task->as);
-
-    /* print_regs(&idle->regs, "idle task regs"); */
-    /* print_regs(&current_task->regs, "task 1 regs"); */
-
     usermode_jump(current_task);
+
+ error_kstack:
+    free_kstack(current_task->esp0);
 
  error_as:
     free_address_space(current_task->as);
@@ -533,18 +543,19 @@ static uint32_t clone_kstack(uint32_t esp0)
 
 int fork(void)
 {
-    asm volatile ("cli");
+    /* asm volatile ("cli"); */
 
-    /* printf("forking task %d\n", current_task->pid); */
+    printf("forking task %d\n", current_task->pid);
     int err = 0;
 
+    printf("about to alloc task\n");
     task_t *child = alloc_task();
     if (!child) {
         err = -ENOMEM;
         goto error;
     }
 
-    /* printf("allocated new task\n"); */
+    printf("allocated new task\n");
     child->as = clone_address_space();
     if (!child->as) {
         printf("error cloning address space\n");
@@ -552,7 +563,7 @@ int fork(void)
         goto error;
     }
 
-    /* printf("cloned address space\n"); */
+    printf("cloned address space\n");
 
     /* child->state = TASK_RUNNING; */
 
@@ -565,7 +576,13 @@ int fork(void)
         goto error;
     }
 
-    /* printf("cloned kernel stack to %x\n", child->esp0); */
+    registers_t *child_regs = (registers_t *)child->esp0;
+    child_regs->eax = 0;
+    
+
+    printf("cloned kernel stack to %x\n", child->esp0);
+    print_regs((registers_t *)child->esp0, "new registers");
+    print_regs((registers_t *)current_task->esp0, "old registers");
 
     task_list_add(&running, child);
     /* printf("Forking task %d into %d\n", current_task->pid, child->pid); */
@@ -584,7 +601,12 @@ void sleep(void)
     /* save_context(&current_task->regs); */
     /* printf("task %d sleeping... eip %x\n", current_task->pid, current_task->regs.eip); */
     /* save_context(&current_task->regs); */
-    switch_tasks(); // TODO: this doesn't save context...
+    /* switch_tasks(); // TODO: this doesn't save context... */
+
+    asm volatile ("sti\n\t"
+                  "mov $12, %%eax\n\t"
+                  "int $0x80\n\t"
+                  : : :); // sys_yield()
 
     /* while (true) { */
     /*     if (running) { */
