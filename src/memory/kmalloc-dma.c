@@ -1,11 +1,11 @@
-#include "kheap.h"
+#include "memory/kheap.h"
 
 #include "internal.h"
 #include "errno.h"
 #include "macros.h"
-#include "pmm.h"
+#include "memory/pmm.h"
 #include "printf.h"
-#include "vmm.h"
+#include "memory/vmm.h"
 
 static void insert_dma(struct dma_chunk **list, struct dma_chunk *chunk)
 {

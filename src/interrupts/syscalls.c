@@ -2,11 +2,11 @@
 
 #include "compiler.h"
 #include "errno.h"
-#include "interrupt.h"
+#include "device/interrupt.h"
 #include "printf.h"
 #include "task.h"
-#include "vfs.h"
-#include "vmm.h"
+#include "fs/vfs.h"
+#include "memory/vmm.h"
 
 static int sys_fork(void);
 static int sys_read(int fd, char __user *buf, uint32_t len);

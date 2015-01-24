@@ -1,12 +1,12 @@
-#include "descriptor_tables.h"
+#include "device/descriptor_tables.h"
 
 #include "bits.h"
-#include "interrupt.h"
+#include "device/interrupt.h"
 #include "ldsymbol.h"
-#include "memory.h"
+#include "memory/memory.h"
 #include "printf.h"
-#include "terminal.h"
-#include "port.h"
+#include "device/terminal.h"
+#include "device/port.h"
 
 #define PIC1_C 0x20
 #define PIC1_D 0x21

@@ -1,7 +1,7 @@
 #include "ring-buffer.h"
 
-#include "kheap.h"
-#include "memory.h"
+#include "memory/kheap.h"
+#include "memory/memory.h"
 #include "printf.h"
 
 int ring_buffer_read(struct ring_buffer *rbuf, void *buf, uint32_t n)

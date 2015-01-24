@@ -3,7 +3,7 @@
 
 #include "bool.h"
 #include "ring-buffer.h"
-#include "terminal.h"
+#include "device/terminal.h"
 
 struct tty {
     struct ring_buffer *kbd_in;

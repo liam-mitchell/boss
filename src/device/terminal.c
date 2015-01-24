@@ -3,7 +3,7 @@
 EXTERN
 #endif
 
-#include "terminal.h"
+#include "device/terminal.h"
 
 #include <stddef.h>
 

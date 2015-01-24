@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "pmm.h"
+#include "memory/pmm.h"
 
 typedef struct registers
 {

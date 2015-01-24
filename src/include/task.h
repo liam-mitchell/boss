@@ -1,9 +1,9 @@
 #ifndef __TASK_H_
 #define __TASK_H_
 
-#include "address-space.h"
-#include "interrupt.h"
-#include "fs.h"
+#include "memory/address-space.h"
+#include "device/interrupt.h"
+#include "fs/fs.h"
 
 #define TASK_READY 0
 #define TASK_BLOCKED 1

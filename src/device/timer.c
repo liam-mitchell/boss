@@ -1,7 +1,7 @@
-#include "timer.h"
-#include "interrupt.h"
-#include "terminal.h"
-#include "port.h"
+#include "device/timer.h"
+#include "device/interrupt.h"
+#include "device/terminal.h"
+#include "device/port.h"
 
 uint32_t ticks = 0;
 

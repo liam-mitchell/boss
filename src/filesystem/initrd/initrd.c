@@ -1,11 +1,11 @@
-#include "initrd.h"
+#include "fs/initrd.h"
 
 #include "compiler.h"
 #include "errno.h"
-#include "fs.h"
-#include "kheap.h"
+#include "fs/fs.h"
+#include "memory/kheap.h"
 #include "macros.h"
-#include "memory.h"
+#include "memory/memory.h"
 #include "printf.h"
 #include "string.h"
 

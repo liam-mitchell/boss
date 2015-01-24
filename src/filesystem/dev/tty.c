@@ -1,11 +1,11 @@
-#include "tty.h"
+#include "device/tty.h"
 
 #include "bits.h"
-#include "devfs.h"
-#include "fs.h"
-#include "keyboard.h"
-#include "kheap.h"
-#include "memory.h"
+#include "fs/fs.h"
+#include "fs/devfs.h"
+#include "device/keyboard.h"
+#include "memory/kheap.h"
+#include "memory/memory.h"
 #include "printf.h"
 #include "ring-buffer.h"
 #include "task.h"
@@ -35,7 +35,7 @@ static uint32_t tty_read(file_t __unused *file, uint32_t __unused *offset,
 {
     uint32_t ret = size;
 
-    // Wait until we're in the foreground and the tty has enough data
+    // Wait until we're in the foreground and the device/tty.has enough data
     while (current_task->pid != tty.fg_pid || tty.kbd_in->size < size * 2) {
         sleep();
     }

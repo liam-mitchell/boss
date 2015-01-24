@@ -2,17 +2,17 @@
 
 #include "algorithm.h"
 #include "bool.h"
-#include "descriptor_tables.h"
+#include "device/descriptor_tables.h"
 #include "errno.h"
-#include "kheap.h"
+#include "memory/kheap.h"
 #include "ldsymbol.h"
-#include "memory.h"
-#include "pmm.h"
-#include "port.h"
+#include "memory/memory.h"
+#include "memory/pmm.h"
+#include "device/port.h"
 #include "printf.h"
-#include "timer.h"
-#include "vfs.h"
-#include "vmm.h"
+#include "device/timer.h"
+#include "fs/vfs.h"
+#include "memory/vmm.h"
 
 extern ldsymbol ld_virtual_offset;
 

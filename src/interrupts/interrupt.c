@@ -1,7 +1,7 @@
-#include "interrupt.h"
+#include "device/interrupt.h"
 
-#include "descriptor_tables.h"
-#include "port.h"
+#include "device/descriptor_tables.h"
+#include "device/port.h"
 #include "task.h"
 #include "printf.h"
 

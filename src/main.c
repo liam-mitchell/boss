@@ -1,16 +1,16 @@
 // main.c - entry point for kernel from the bootloader
 // author: Liam Mitchell
 
-#include "descriptor_tables.h"
-#include "fs.h"
-#include "keyboard.h"
-#include "kheap.h"
+#include "device/descriptor_tables.h"
+#include "fs/fs.h"
+#include "device/keyboard.h"
+#include "memory/kheap.h"
 #include "macros.h"
 #include "mboot.h"
 #include "syscalls.h"
 #include "task.h"
-#include "terminal.h"
-#include "vmm.h"
+#include "device/terminal.h"
+#include "memory/vmm.h"
 
 /**
  * kernel's main function

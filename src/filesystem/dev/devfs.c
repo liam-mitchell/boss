@@ -1,11 +1,11 @@
-#include "devfs.h"
+#include "fs/fs.h"
 
 #include "compiler.h"
 #include "errno.h"
-#include "kheap.h"
+#include "memory/kheap.h"
 #include "printf.h"
 #include "string.h"
-#include "tty.h"
+#include "device/tty.h"
 
 #define DEV_NFILES 4
 

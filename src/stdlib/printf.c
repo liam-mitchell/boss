@@ -2,7 +2,7 @@
 
 #include <stdarg.h>
 
-#include "terminal.h"
+#include "device/terminal.h"
 
 void vprintf(const char *format, va_list args)
 {

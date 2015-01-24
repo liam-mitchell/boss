@@ -1,7 +1,7 @@
 #ifndef __ADDRESS_SPACE_H_
 #define __ADDRESS_SPACE_H_
 
-#include "pmm.h"
+#include "memory/pmm.h"
 
 typedef struct address_space {
     uint32_t **pgdir;

@@ -1,17 +1,17 @@
-#include "ata.h"
+#include "device/ata.h"
 
 #include "bool.h"
 #include "bits.h"
 #include "compiler.h"
-#include "interrupt.h"
-#include "kheap.h"
+#include "device/interrupt.h"
+#include "memory/kheap.h"
 #include "macros.h"
-#include "memory.h"
-#include "pci.h"
-#include "port.h"
+#include "memory/memory.h"
+#include "device/pci.h"
+#include "device/port.h"
 #include "printf.h"
 #include "string.h"
-#include "vmm.h"
+#include "memory/vmm.h"
 
 #define ATA_CHAN_PRIM 0
 #define ATA_CHAN_SEC 1

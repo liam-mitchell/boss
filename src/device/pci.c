@@ -1,10 +1,10 @@
-#include "pci.h"
+#include "device/pci.h"
 
-#include "ata.h"
+#include "device/ata.h"
 #include "compiler.h"
-#include "port.h"
+#include "device/port.h"
 #include "macros.h"
-#include "memory.h"
+#include "memory/memory.h"
 #include "printf.h"
 
 #define PCI_PORT_ADDR 0xCF8

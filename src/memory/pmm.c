@@ -1,18 +1,18 @@
-#include "pmm.h"
+#include "memory/pmm.h"
 
 #include "bits.h"
-#include "descriptor_tables.h"
+#include "device/descriptor_tables.h"
 #include "errno.h"
-#include "interrupt.h"
-#include "kheap.h"
+#include "device/interrupt.h"
+#include "memory/kheap.h"
 #include "ldsymbol.h"
 #include "macros.h"
-#include "memory.h"
+#include "memory/memory.h"
 #include "mboot.h"
 #include "printf.h"
 #include "task.h"
-#include "terminal.h"
-#include "vmm.h"
+#include "device/terminal.h"
+#include "memory/vmm.h"
 
 #include <stdint.h>
 

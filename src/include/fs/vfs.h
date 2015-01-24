@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "fs.h"
+#include "fs/fs.h"
 
 void vfs_alloc_inode(superblock_t *sb);
 void vfs_read_inode(superblock_t *sb, inode_t *inode);

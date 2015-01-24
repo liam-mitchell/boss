@@ -1,15 +1,15 @@
-#include "address-space.h"
+#include "memory/address-space.h"
 
 #include "algorithm.h"
 #include "errno.h"
-#include "kheap.h"
+#include "memory/kheap.h"
 #include "ldsymbol.h"
 #include "macros.h"
-#include "memory.h"
+#include "memory/memory.h"
 #include "task.h"
-#include "pmm.h"
+#include "memory/pmm.h"
 #include "printf.h"
-#include "vmm.h"
+#include "memory/vmm.h"
 
 extern ldsymbol ld_virtual_offset;
 

@@ -4,7 +4,7 @@
 #define EXTERN extern "C" {
 #define ENDEXTERN }
 
-#include "terminal.h"
+#include "device/terminal.h"
 
 #ifndef NULL
 #define NULL (void *)0
