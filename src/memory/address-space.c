@@ -1,7 +1,10 @@
 #include "address-space.h"
 
+#include "algorithm.h"
+#include "errno.h"
 #include "kheap.h"
 #include "ldsymbol.h"
+#include "macros.h"
 #include "memory.h"
 #include "task.h"
 #include "pmm.h"
@@ -35,11 +38,8 @@ static uint32_t clone_page(uint32_t virtual)
 
     uint32_t *page = get_page(virtual);
     if (!PG_IS_USERMODE(*page)) {
-        /* printf(" Cloning kernel page at vaddr %x: returning %x\n", virtual, *page); */
         return *page;
     }
-
-    /* printf("cloning user page at vaddr %x (page %x)\n", virtual, *page); */
 
     uint32_t new = alloc_frame();
 
@@ -55,7 +55,6 @@ static uint32_t clone_page(uint32_t virtual)
 static uint32_t *clone_page_table(uint32_t virtual)
 {
     uint32_t **pde = get_page_directory_entry(virtual);
-    /* printf("Cloning page table %x (virtual %x pt %x)...\n", *pde, virtual, pde); */
 
     if (!PG_IS_PRESENT((uint32_t)*pde)) {
         return NULL;
@@ -64,7 +63,6 @@ static uint32_t *clone_page_table(uint32_t virtual)
     uint32_t new = alloc_frame();
     uint32_t *vnew = (uint32_t *)map_physical(new);
 
-    /* printf(" User page table, cloning (vnew %x new %x)\n", vnew, new); */
 
     for (uint32_t i = 0; i < PAGE_SIZE / 4; ++i) {
         vnew[i] = clone_page(virtual + i * PAGE_SIZE);
@@ -159,4 +157,92 @@ void switch_address_space(address_space_t *old, const address_space_t *new)
     {
         switch_page_table(new, virtual);
     }
+}
+
+static int as_alloc_page(address_space_t *as, uint32_t virtual,
+                         bool readonly, bool kernel)
+{
+    uint32_t *pde = (uint32_t *)&as->pgdir[DIRINDEX(virtual)];
+    if (!PG_IS_PRESENT(*pde)) {
+        uint32_t frame = alloc_frame();
+        if (!frame) {
+            return -ENOMEM;
+        }
+
+        *pde = frame | PG_USER | PG_WRITEABLE | PG_PRESENT;
+    }
+
+    uint32_t *pt = (uint32_t *)(map_physical(*pde) & ~0xFFF);
+    uint32_t *page = &pt[TBLINDEX(virtual)];
+
+    *page = alloc_frame();
+    if (!*page) {
+        free_frame(PG_FRAME(*pde));
+        return -ENOMEM;
+    }
+
+    set_page_attributes(page, true, !readonly, !kernel);
+
+    unmap_page((uint32_t)pt);
+
+    return 0;
+}
+
+static void as_free_page(address_space_t *as, uint32_t virtual)
+{
+    /* TODO: free the page tables too if we can... */
+    uint32_t *pde = (uint32_t *)&as->pgdir[DIRINDEX(virtual)];
+    if (!PG_IS_PRESENT(*pde)) {
+        return;
+    }
+
+    uint32_t *pt = (uint32_t *)map_physical(PG_FRAME(*pde));
+    uint32_t *page = &pt[TBLINDEX(virtual)];
+
+    if (*page) {
+        free_frame(PG_FRAME(*page));
+    }
+
+    unmap_page((uint32_t)pt);
+}
+
+int map_as_data(address_space_t *as, uint32_t len, void *data)
+{
+    void *start = data;
+    int err = 0;
+    for (uint32_t virtual = 0; virtual < len; virtual += PAGE_SIZE) {
+        err = as_alloc_page(as, virtual, false, false);
+        if (err < 0) {
+            goto free_pages;
+        }
+
+        uint32_t *pt =
+            (uint32_t *)map_physical(PG_FRAME((uint32_t)as->pgdir[DIRINDEX(virtual)]));
+        uint32_t *page =
+            (uint32_t *)map_physical(PG_FRAME(pt[TBLINDEX(virtual)]));
+
+        memcpy(page, data, min(len - virtual, (uint32_t)PAGE_SIZE));
+        data += PAGE_SIZE;
+
+        unmap_page((uint32_t)page);
+        unmap_page((uint32_t)pt);
+    }
+
+    as->brk = align(len, PAGE_SIZE);
+    return 0;
+
+ free_pages:
+    for (uint32_t virtual = data - start;
+         virtual <= (uint32_t)data;
+         virtual -= PAGE_SIZE)
+    {
+        as_free_page(as, virtual);
+    }
+
+    return err;
+}
+
+int map_as_stack(address_space_t *as)
+{
+    return as_alloc_page(as, (uint32_t)ld_virtual_offset - 4, false, false);
 }

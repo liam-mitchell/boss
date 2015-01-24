@@ -78,16 +78,12 @@ static task_t *task_list_find(struct task **list, uint32_t pid)
 
 static task_t *alloc_task()
 {
-    /* printf("allocating task... "); */
     task_t *task = kzalloc(MEM_GEN, sizeof(*task));
 
-    /* printf("kzalloc returned %x\n", task); */
     if (!task) {
         errno = -ENOMEM;
         goto error;
     }
-
-    /* printf("allocated "); */
 
     task->as = alloc_address_space();
 
@@ -95,8 +91,6 @@ static task_t *alloc_task()
         errno = -ENOMEM;
         goto error_task;
     }
-
-    /* printf("allocated as "); */
 
     task->pid = next_pid++;
 
@@ -114,7 +108,6 @@ static task_t *alloc_task()
 
 static void halt()
 {
-    /* printf("halting...\n"); */
     while (true) {
         asm volatile ("sti\n\t"
                       "hlt\n\t");
@@ -196,7 +189,7 @@ void print_regs(registers_t *regs, char *msg)
 #define switch_context(old, new) do {                                   \
     set_esp0(new->esp0);                                                \
     uint32_t eax;                                                       \
-    asm volatile ("movl %2, %%esp\n\t"                                  \
+    asm volatile ("movl %1, %%esp\n\t"                                  \
                   "pop %%eax\n\t"                                       \
                   "mov %%ax, %%ds\n\t"                                  \
                   "mov %%ax, %%es\n\t"                                  \
@@ -205,7 +198,7 @@ void print_regs(registers_t *regs, char *msg)
                   "popa\n\t"                                            \
                   "add $8, %%esp\n\t"                                   \
                   "iret\n\t"                                            \
-                  : "=g"(old->esp0), "=a"(eax)                          \
+                  : "=a"(eax)                                           \
                   : "g"(new->esp0)                                      \
                   : "%ebx", "%ecx", "%edx", "%esi", "%edi");            \
     } while (0);
@@ -248,94 +241,6 @@ static void timer_handler(registers_t __unused *regs)
     }
 }
 
-static int as_alloc_page(address_space_t *as, uint32_t virtual,
-                         bool readonly, bool kernel)
-{
-    uint32_t *pde = (uint32_t *)&as->pgdir[DIRINDEX(virtual)];
-    if (!PG_IS_PRESENT(*pde)) {
-        uint32_t frame = alloc_frame();
-        if (!frame) {
-            return -ENOMEM;
-        }
-
-        *pde = frame | PG_USER | PG_WRITEABLE | PG_PRESENT;
-    }
-
-    uint32_t *pt = (uint32_t *)(map_physical(*pde) & ~0xFFF);
-    uint32_t *page = &pt[TBLINDEX(virtual)];
-
-    *page = alloc_frame();
-    if (!*page) {
-        free_frame(PG_FRAME(*pde));
-        return -ENOMEM;
-    }
-
-    set_page_attributes(page, true, !readonly, !kernel);
-
-    unmap_page((uint32_t)pt);
-
-    return 0;
-}
-
-static void as_free_page(address_space_t *as, uint32_t virtual)
-{
-    /* TODO: free the page tables too if we can... */
-    uint32_t *pde = (uint32_t *)&as->pgdir[DIRINDEX(virtual)];
-    if (!PG_IS_PRESENT(*pde)) {
-        return;
-    }
-
-    uint32_t *pt = (uint32_t *)map_physical(PG_FRAME(*pde));
-    uint32_t *page = &pt[TBLINDEX(virtual)];
-
-    if (*page) {
-        free_frame(PG_FRAME(*page));
-    }
-
-    unmap_page((uint32_t)pt);
-}
-
-static int map_data(address_space_t *as, uint32_t len, void *data)
-{
-    void *start = data;
-    int err = 0;
-    for (uint32_t virtual = 0; virtual < len; virtual += PAGE_SIZE) {
-        err = as_alloc_page(as, virtual, false, false);
-        if (err < 0) {
-            goto free_pages;
-        }
-
-        uint32_t *pt =
-            (uint32_t *)map_physical(PG_FRAME((uint32_t)as->pgdir[DIRINDEX(virtual)]));
-        uint32_t *page =
-            (uint32_t *)map_physical(PG_FRAME(pt[TBLINDEX(virtual)]));
-
-        memcpy(page, data, min(len - virtual, (uint32_t)PAGE_SIZE));
-        data += PAGE_SIZE;
-
-        unmap_page((uint32_t)page);
-        unmap_page((uint32_t)pt);
-    }
-
-    as->brk = align(len, PAGE_SIZE);
-    return 0;
-
- free_pages:
-    for (uint32_t virtual = data - start;
-         virtual <= (uint32_t)data;
-         virtual -= PAGE_SIZE)
-    {
-        as_free_page(as, virtual);
-    }
-
-    return err;
-}
-
-static int map_stack(address_space_t *as)
-{
-    return as_alloc_page(as, (uint32_t)ld_virtual_offset - 4, false, false);
-}
-
 static void init_exec_registers(registers_t *regs)
 {
     regs->esp = (uint32_t)ld_virtual_offset - 4;
@@ -370,7 +275,6 @@ static int create_idle_task(void)
     for (uint32_t i = ARRAY_SIZE(stack); i > 0; --i) {
         idle->esp0 -= sizeof(stack[i - 1]);
         memcpy((void *)idle->esp0, &stack[i - 1], sizeof(stack[i - 1]));
-        /* printf("wrote %x to idle stack %x\n", stack[i - 1], idle->esp0); */
     }
 
     return 0;
@@ -446,12 +350,12 @@ int exec(const char *path)
         goto error_as;
     }
 
-    err = map_data(current_task->as, len, data);
+    err = map_as_data(current_task->as, len, data);
     if (err < 0) {
         goto error_kstack;
     }
 
-    err = map_stack(current_task->as);
+    err = map_as_stack(current_task->as);
     if (err < 0) {
         goto error_kstack;
     }
