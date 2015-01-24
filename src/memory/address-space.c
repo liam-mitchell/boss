@@ -20,8 +20,10 @@ address_space_t *alloc_address_space()
 
 void free_address_space(address_space_t *as)
 {
-    kfree(as->pgdir);
-    kfree(as);
+    if (as) {
+        kfree(as->pgdir);
+        kfree(as);
+    }
 }
 
 static uint32_t clone_page(uint32_t virtual)

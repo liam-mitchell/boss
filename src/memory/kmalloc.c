@@ -48,7 +48,6 @@ static struct chunk *remove_chunk(struct chunk **list, struct chunk *chunk)
 static struct chunk *split_chunk(struct chunk *chunk, unsigned long size)
 {
     if (size + sizeof(unsigned long) > chunk->size) {
-        /* printf("returning null split size %x chunksize %x\n", size, chunk->size); */
         return NULL;
     }
 
@@ -61,8 +60,6 @@ static struct chunk *split_chunk(struct chunk *chunk, unsigned long size)
     new->next = NULL;
     new->prev = NULL;
 
-    /* printf("split chunk %x and %x (sizes %x / %x)\n", chunk, new, chunk->size, new->size); */
-
     return new;
 }
 
@@ -71,7 +68,6 @@ static void defrag_before(struct chunk *chunk)
     while (chunk->prev
            && (USER_PTR(chunk->prev) + chunk->prev->size == chunk))
     {
-        /* printf("combining chunk %x with %x (sizes %x and %x)\n", chunk, chunk->prev, chunk->size, chunk->prev->size); */
         chunk->prev->size += chunk->size + sizeof(unsigned long);
         chunk->prev->next = chunk->next;
 
@@ -80,8 +76,6 @@ static void defrag_before(struct chunk *chunk)
         }
 
         chunk = chunk->prev;
-
-        /* printf("size now %x\n", chunk->size); */
     }
 }
 
@@ -90,16 +84,12 @@ static void defrag_after(struct chunk *chunk)
     while (chunk->next
            && (USER_PTR(chunk) + chunk->size == chunk->next))
     {
-        /* printf("combining chunk %x with %x (sizes %x and %x) ", chunk, chunk->next, chunk->size, chunk->next->size); */
-
         chunk->size += chunk->next->size + sizeof(unsigned long);
         chunk->next = chunk->next->next;
 
         if (chunk->next) {
             chunk->next->prev = chunk;
         }
-
-        /* printf("size now %x\n", chunk->size); */
     }
 }
 
@@ -113,11 +103,6 @@ static void add_before(struct chunk *chunk, struct chunk *new)
     new->next = chunk;
 
     chunk->prev = new;
-
-    /* printf("added %x to list before %x\n" */
-           /* " other chunk prev: %x next %x size %x\n" */
-           /* " new chunk prev: %x next %x size %x\n", */
-           /* new, chunk, chunk->prev, chunk->next, chunk->size, new->prev, new->next, new->size); */
 }
 
 static void add_after(struct chunk *chunk, struct chunk *new)
@@ -142,8 +127,6 @@ static void add_chunk(struct chunk **list, struct chunk *chunk)
 
     chunk->next = NULL;
     chunk->prev = NULL;
-
-    /* printf("adding %x to list %x (size %x)\n", chunk, list, chunk->size); */
 
     if (!curr) {
         *list = chunk;
@@ -201,14 +184,11 @@ static void *alloc_chunk(unsigned long size)
 
 static void *kmalloc_general(unsigned long size)
 {
-    /* printf("kmalloc_general: allocating %x bytes general memory... ", size); */
     struct chunk *curr = find_chunk(free, size);
     if (!curr) {
-        /* printf("new chunk\n"); */
         return alloc_chunk(size);
     }
 
-    /* printf("removing chunk %x\n", curr); */
     remove_chunk(&free, curr);
 
     if (curr->size > size + sizeof(*curr)) {
@@ -216,7 +196,6 @@ static void *kmalloc_general(unsigned long size)
         add_chunk(&free, new);
     }
 
-    /* printf("kmalloc_general: returning %x (chunk size %x)\n", USER_PTR(curr), curr->size); */
     return USER_PTR(curr);
 }
 
@@ -280,7 +259,6 @@ void kfree(void *address)
     }
 
     struct chunk *chunk = CHUNK_PTR(address);
-    /* printf("kfree: freeing chunk %x (size %x)\n", chunk, chunk->size); */
 
     chunk->next = NULL;
     chunk->prev = NULL;
@@ -298,62 +276,6 @@ void *kzalloc(kmem_type_t type, uint32_t size)
 {
     void *ret = kcalloc(type, 1, size);
     return ret;
-}
-
-/* static void print_chunk(struct chunk *chunk) */
-/* { */
-/*     printf("chunk at %x: size %x next %x prev %x\n", chunk, chunk->size, chunk->next, chunk->prev); */
-/* } */
-
-/* static void print_chunks() */
-/* { */
-/*     printf("init_kheap: free chunk list\n"); */
-/*     for (struct chunk *curr = free; curr; curr = curr->next) { */
-/*         printf("\t"); */
-/*         print_chunk(curr); */
-/*     } */
-/* } */
-
-static void kheap_test()
-{
-    /* printf("kheap_test: kheap_top = %x\n", kheap_top); */
-    /* print_chunks(); */
-    /* char *buf1 = kmalloc(MEM_GEN, 12); */
-    /* char *buf2 = kmalloc(MEM_GEN, 8); */
-    /* char *buf3 = kmalloc(MEM_GEN, 1); */
-    /* char *buf4 = kmalloc(MEM_GEN, 0); */
-    /* char *buf5 = kmalloc(MEM_GEN, PAGE_SIZE); */
-    /* char *buf6 = kmalloc(MEM_GEN, 3); */
-    /* char *buf7 = kmalloc(MEM_GEN, 189); */
-
-    /* printf("first time through alloc - "); */
-    /* print_chunks(); */
-    /* printf("buffers allocated at: %x\n%x\n%x\n%x\n%x\n%x\n%x\n", buf1, buf2, buf3, buf4, buf5, buf6, buf7); */
-    /* kfree(buf1); */
-    /* kfree(buf2); */
-
-    /* kfree(buf5); */
-    /* kfree(buf7); */
-
-    /* printf("after freeing - "); */
-    /* print_chunks(); */
-
-    /* buf1 = kmalloc(MEM_GEN, 40); */
-    /* buf2 = kmalloc(MEM_GEN, 2); */
-    /* buf5 = kmalloc(MEM_GEN, 7); */
-    /* kfree(buf5); */
-    /* kfree(buf2); */
-    /* kfree(buf6); */
-
-    /* printf("more stuff was done - "); */
-    /* print_chunks(); */
-    /* printf("buffers allocated at: %x\n%x\n%x\n%x\n%x\n%x\n%x\n", buf1, buf2, buf3, buf4, buf5, buf6, buf7); */
-    /* kfree(buf1); */
-    /* kfree(buf3); */
-    /* kfree(buf4); */
-
-    /* printf("all chunks freed - "); */
-    /* print_chunks(); */
 }
 
 void init_kheap(void)
@@ -377,6 +299,4 @@ void init_kheap(void)
 
     kheap_top += PAGE_SIZE;
     puts("Initialized kernel heap!\n");
-
-    kheap_test();
 }

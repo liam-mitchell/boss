@@ -78,16 +78,16 @@ static task_t *task_list_find(struct task **list, uint32_t pid)
 
 static task_t *alloc_task()
 {
-    printf("allocating task... ");
+    /* printf("allocating task... "); */
     task_t *task = kzalloc(MEM_GEN, sizeof(*task));
 
-    printf("kzalloc returned %x\n", task);
+    /* printf("kzalloc returned %x\n", task); */
     if (!task) {
         errno = -ENOMEM;
         goto error;
     }
 
-    printf("allocated ");
+    /* printf("allocated "); */
 
     task->as = alloc_address_space();
 
@@ -96,14 +96,7 @@ static task_t *alloc_task()
         goto error_task;
     }
 
-    printf("allocated as ");
-    /* task->esp0 = (uint32_t)kzalloc(MEM_GEN, PAGE_SIZE); */
-    /* if (!task->esp0) { */
-    /*     errno = -ENOMEM; */
-    /*     goto error_kstack; */
-    /* } */
-
-    /* task->esp0 += PAGE_SIZE - 4; */
+    /* printf("allocated as "); */
 
     task->pid = next_pid++;
 
@@ -149,8 +142,6 @@ static void free_task(task_t *task)
 
 static void usermode_jump(task_t *task)
 {
-    /* print_regs(&task->regs, "jumping to usermode"); */
-    /* printf("first instruction word: %x\n", *(uint32_t *)task->regs.eip); */
     asm volatile (".intel_syntax noprefix\n\t"
                   "cli\n\t"
                   "mov ax, 0x23\n\t"
@@ -174,8 +165,6 @@ static void usermode_jump(task_t *task)
                   : "r"(task->regs.ss), "r"(task->regs.esp),
                     "r"(task->regs.cs), "r"(task->regs.eip)
                   : "eax");
-
-    /* PANIC("usermode jump failed?!"); */
 }
 
 void print_regs(registers_t *regs, char *msg)
@@ -207,11 +196,7 @@ void print_regs(registers_t *regs, char *msg)
 #define switch_context(old, new) do {                                   \
     set_esp0(new->esp0);                                                \
     uint32_t eax;                                                       \
-    asm volatile (/*"pushfl\n\t"*/                                      \
-                  /*"pushl %%cs\n\t"*/                                  \
-                  /*"pushl $.doneswitch\n\t"*/                          \
-                  /*"movl %%esp, %0\n\t"*/                              \
-                  "movl %2, %%esp\n\t"                                  \
+    asm volatile ("movl %2, %%esp\n\t"                                  \
                   "pop %%eax\n\t"                                       \
                   "mov %%ax, %%ds\n\t"                                  \
                   "mov %%ax, %%es\n\t"                                  \
@@ -220,69 +205,37 @@ void print_regs(registers_t *regs, char *msg)
                   "popa\n\t"                                            \
                   "add $8, %%esp\n\t"                                   \
                   "iret\n\t"                                            \
-                  /*"iret\n"*/                                          \
-                  /*".doneswitch:\n\t"*/                                \
                   : "=g"(old->esp0), "=a"(eax)                          \
                   : "g"(new->esp0)                                      \
                   : "%ebx", "%ecx", "%edx", "%esi", "%edi");            \
     } while (0);
 
-void switch_tasks(/* registers_t *regs */)
+void switch_tasks(void)
 {
     if (!current_task) {
         return;
     }
 
-    /* asm volatile ("cli"); */
-    /* printf("switching tasks\n"); */
     task_t *old = current_task;
 
     if (task_list_find(&running, old->pid)) {
-        /* printf("requeueing task %d\n", old->pid); */
         task_list_remove(&running, old);
         task_list_add(&running, old);
     }
-    else {
-        /* printf("task %d not found to requeue, must be sleeping\n", old->pid); */
-    }
 
     if (running) {
-        /* printf("switching to running task %d\n", running->pid); */
-        /* print_regs(&idle->regs, "idle task registers"); */
         current_task = running;
     }
     else {
         current_task = idle;
-
-        /* if (old != current_task) { */
-        /*     /\* printf("switching to idle task\n"); *\/ */
-        /*     /\* print_tasks(); *\/ */
-        /*     switch_address_space(old->as, current_task->as); */
-        /*     usermode_jump(current_task); */
-        /* } */
     }
 
     if (old == current_task) {
-        /* printf("not switching at all, we were already here\n"); */
         return;
     }
 
-    /* save_context(old); */
-    /* print_tasks(); */
-
-    /* *regs = current_task->regs; */
-    /* if (current_task->pid == 2 || old->pid == 2) */
-        /* printf("switching tasks from %d to %d\n", old->pid, current_task->pid); */
     switch_address_space(old->as, current_task->as);
-    /* printf("switched address space\n"); */
-    /* if (current_task->pid == 2 || old->pid == 2) */
-    /* printf("switching context... old->esp0 = %x, new->esp0 = %x\n", old->esp0, current_task->esp0); */
-    /* printf("eip %x cs %x eflags %x\n", *(uint32_t *)(current_task->esp0 + 44), *(uint32_t *)(current_task->esp0 + 48), *(uint32_t *)(current_task->esp0 + 52)); */
-    /* printf("old eip %x cs %x eflags %x\n", *(uint32_t *)(old->esp0 + 44), *(uint32_t *)(old->esp0 + 48), *(uint32_t *)(old->esp0 + 52)); */
-    /* printf("address of switch_tasks(): %x\n", &switch_tasks); */
     switch_context(old, current_task);
-    /* printf("switched context\n"); */
-    /* restore_context(&current_task->regs); */
 }
 
 static void timer_handler(registers_t __unused *regs)
@@ -291,7 +244,6 @@ static void timer_handler(registers_t __unused *regs)
     ++ticks;
 
     if (ticks % 5 == 0 && current_task) {
-        /* current_task->regs = *regs; */
         switch_tasks();
     }
 }
@@ -418,7 +370,7 @@ static int create_idle_task(void)
     for (uint32_t i = ARRAY_SIZE(stack); i > 0; --i) {
         idle->esp0 -= sizeof(stack[i - 1]);
         memcpy((void *)idle->esp0, &stack[i - 1], sizeof(stack[i - 1]));
-        printf("wrote %x to idle stack %x\n", stack[i - 1], idle->esp0);
+        /* printf("wrote %x to idle stack %x\n", stack[i - 1], idle->esp0); */
     }
 
     return 0;
@@ -462,7 +414,6 @@ void init_scheduler(void)
 
 int exec(const char *path)
 {
-    printf("in exec: %s\n", path);
     int err = 0;
     file_t *binary = open_path(path, MODE_READ);
     if (!binary) {
@@ -482,16 +433,14 @@ int exec(const char *path)
         goto error_filedata;
     }
 
-    if (current_task->as) {
-        free_address_space(current_task->as);
-    }
-
+    free_address_space(current_task->as);
     current_task->as = alloc_address_space();
     if (!current_task->as) {
         err = -ENOMEM;
         goto error_filedata;
     }
 
+    /* free_kstack(current_task->esp0); FIXME: this doesn't work... :( */
     current_task->esp0 = alloc_kstack();
     if (!current_task->esp0) {
         goto error_as;
@@ -543,29 +492,21 @@ static uint32_t clone_kstack(uint32_t esp0)
 
 int fork(void)
 {
-    /* asm volatile ("cli"); */
+    asm volatile ("cli");
 
-    printf("forking task %d\n", current_task->pid);
     int err = 0;
 
-    printf("about to alloc task\n");
     task_t *child = alloc_task();
     if (!child) {
         err = -ENOMEM;
         goto error;
     }
 
-    printf("allocated new task\n");
     child->as = clone_address_space();
     if (!child->as) {
-        printf("error cloning address space\n");
         err = -ENOMEM;
         goto error;
     }
-
-    printf("cloned address space\n");
-
-    /* child->state = TASK_RUNNING; */
 
     child->regs = current_task->regs;
     child->regs.eax = 0;
@@ -578,14 +519,9 @@ int fork(void)
 
     registers_t *child_regs = (registers_t *)child->esp0;
     child_regs->eax = 0;
-    
-
-    printf("cloned kernel stack to %x\n", child->esp0);
-    print_regs((registers_t *)child->esp0, "new registers");
-    print_regs((registers_t *)current_task->esp0, "old registers");
 
     task_list_add(&running, child);
-    /* printf("Forking task %d into %d\n", current_task->pid, child->pid); */
+
     return child->pid;
 
  error:
@@ -598,33 +534,16 @@ void sleep(void)
     task_list_remove(&running, current_task);
     task_list_add(&blocked, current_task);
 
-    /* save_context(&current_task->regs); */
-    /* printf("task %d sleeping... eip %x\n", current_task->pid, current_task->regs.eip); */
-    /* save_context(&current_task->regs); */
-    /* switch_tasks(); // TODO: this doesn't save context... */
-
-    asm volatile ("sti\n\t"
-                  "mov $12, %%eax\n\t"
+    asm volatile ("mov $12, %%eax\n\t"
                   "int $0x80\n\t"
-                  : : :); // sys_yield()
-
-    /* while (true) { */
-    /*     if (running) { */
-    /*         usermode_jump(running); */
-    /*     } */
-
-    /*     asm volatile ("sti\n\t" */
-    /*                   "hlt\n\t"); */
-    /* } */
+                  : : :); // sys_yield() TODO: This shouldn't be syscall 12... :P
 }
 
 void wake(uint32_t pid)
 {
-    /* printf("waking task with pid %x\n", pid); */
     struct task *task = task_list_find(&blocked, pid);
 
     if (task) {
-        /* printf("found task\n"); */
         task_list_remove(&blocked, task);
         task_list_add(&running, task);
     }
