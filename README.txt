@@ -141,6 +141,7 @@ Major features of the kernel are as follows:
       same order, too). Enables simple system call extension by just adding
       functions to the array void *syscalls[] in src/interrupts/syscalls.c.
 
-Thanks for your interest in the BOSS! Feel free to email any concerns to me
-(Liam Mitchell) at ldmitche@ucalgary.ca, or come chat with me sometime in
-#osdev on irc.freenode.org (/msg cmdrcoriander).
+Thanks for your interest in the BOSS! Feel free to email any concerns, requests,
+reports, stories or really whatever else to me (Liam Mitchell) at
+ldmitche [at] ucalgary [dot] ca, or come chat with me sometime in #osdev on
+irc.freenode.org (/msg cmdrcoriander).
