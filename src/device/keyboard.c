@@ -1,7 +1,7 @@
 #include "keyboard.h"
 
 #include "bits.h"
-#include "device_io.h"
+#include "port.h"
 #include "errno.h"
 #include "interrupt.h"
 #include "printf.h"

@@ -71,7 +71,6 @@ exec() instead of executing the child then reprinting its prompt.
 trash is also unable to backspace (a crippling flaw - but nobody said it was
 a *good* shell ;) so you better get it right the first time!
 
-
 ** 3. BUILDING THE KERNEL **
 
 Should you wish to undertake the arduous task of building the kernel yourself,
@@ -82,6 +81,8 @@ you will require several tools:
   - make
   - bash
   - python
+  - genisoimage
+  - coreutils (cp, mv, echo, etc)
 
 These tools will need to be in your PATH.
 
@@ -91,3 +92,45 @@ where the Makefile resides).
 
 ** 4. KERNEL FEATURES WALKTHROUGH **
 
+Major features of the kernel are as follows:
+
+  - Fully preemptive round-robin scheduler, which allows fancy things like
+      threads sleeping in the kernel and yielding before preemption ;)
+
+      Core scheduler code can be found in src/tasks/task.c. Context saving code
+      is found unfortunately split between save_context() in task.c and the
+      IRQ/ISR handlers in src/interrupts/interrupts.s.
+
+      The scheduler uses one kernel stack per thread, allocating a single page
+      for each thread's kernel stack.
+
+      Process creation and execution can also be found in src/tasks/task.c (a
+      prime target for the current refactor - should soon be available in fork.c
+      and exec.c, among others :D ).
+
+  - Virtual UNIX-like filesystem, allowing classic mountpoints for different
+      types of filesystem within the same directory structure.
+
+      Core VFS code can be found in src/filesystem/vfs.c. Specific filesystem
+      implementations are contained in subfolders within the filesystem/
+      directory (ie. initrd/, dev/). src/filesystem/fs.h contains core
+      filesystem data structures and definitions, while src/filesystem/fs.c
+      implements several of these core functions.
+
+  - Loads itself into the higher half, to allow program linking to take place
+      from the bottom of memory without disruption.
+
+      src/boot/boot.s does most of the hard work of implementing the higher
+      half kernel, setting up the paging structures for the rest of the
+      kernel and mapping the kernel into the upper 1GB. The virtual load
+      address for the kernel is at 0xC0000000 (as per the usual... :P)
+
+  - Uses a simple implementation of malloc which allows for allocation of
+      contiguous sections of DMA memory (for devices drivers which require
+      physically contiguous RAM).
+
+      Core kernel memory allocation is implemented in src/memory/kmalloc.c,
+      and DMA implementations can be found in src/memory/kmalloc-dma.c. The
+      supporting physical page allocation functions can be found in
+      src/memory/vmm.c, and the functions used to allocate physical frames
+      for those pages are in src/memory/pmm.c.

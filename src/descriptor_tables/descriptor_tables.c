@@ -6,7 +6,7 @@
 #include "memory.h"
 #include "printf.h"
 #include "terminal.h"
-#include "device_io.h"
+#include "port.h"
 
 #define PIC1_C 0x20
 #define PIC1_D 0x21

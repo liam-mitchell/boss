@@ -2,11 +2,16 @@ include include.mk
 
 default: all
 
-.PHONY: iso
-all: build initrd iso
+all: $(ISO)
+
+.PHONY: iso initrd build depends
+iso: $(ISO)
+initrd: $(INITRD_OUT)
+build: $(BINARY)
+depends: $(DEPENDS)
 
 $(DEPENDS): $(HEADERS)
-	@rm -f .depend
+	@rm -f $(DEPENDS)
 	@for f in $(CSOURCES); \
 	do $(CC) $(CFLAGS) -MM $$f | \
 	sed "s:\(.*\)\(\.o\):$(OBJDIR)/\1\.c\2:g" >> $(DEPENDS); \
@@ -15,9 +20,9 @@ $(DEPENDS): $(HEADERS)
 
 -include $(DEPENDS)
 
-build: $(DEPENDS) $(OBJFILES)
+$(BINARY): $(DEPENDS) $(OBJFILES)
 	@echo "[LD]     bin/kernel.bin"
-	@$(CC) $(CFLAGS) $(OBJFILES) $(LDFLAGS) -o bin/kernel.bin
+	@$(CC) $(CFLAGS) $(OBJFILES) $(LDFLAGS) -o $(BINARY)
 
 $(OBJDIR)/%.c.o: %.c
 	@echo "[CC]     $<"
@@ -27,16 +32,19 @@ $(OBJDIR)/%.s.o: %.s
 	@echo "[AS]     $<"
 	@$(AS) $(ASFLAGS) $< -o $(OBJDIR)/$(shell basename $@)
 
-initrd: $(OBJFILES)
+$(INITRD_OUT): $(INITRD_FILES)
 	@echo "[INITRD] $(GEN_INITRD)"
 	@$(GEN_INITRD) -o $(INITRD_OUT) -d $(INITRD) > /dev/null
 
-iso: $(OBJFILES)
+$(INITRD_FILES):
+	;
+
+$(ISO): $(BINARY) $(OBJFILES) $(INITRD_OUT)
 	@echo "[ISO]    bin/kernel.iso"
 	@cp bin/kernel.bin iso/boot/
 	@genisoimage -R -b boot/grub/stage2_eltorito \
 	-no-emul-boot -boot-load-size 4 -input-charset utf-8 \
-	-boot-info-table -o bin/kernel.iso iso
+	-boot-info-table -o $(ISO) $(ISODIR)
 
 clean:
 	@echo "[CLEAN]  $(ISO)"
@@ -45,4 +53,4 @@ clean:
 	@if [ -f $(BINARY) ]; then rm $(BINARY); fi
 	@echo "[CLEAN]  $(OBJDIR)"
 	@echo "[CLEAN]  $(INITRD_OUT)"
-	@rm -f $(OBJDIR)/* $(INITRD_OUT) || true
+	@rm -rf $(OBJDIR)/* $(INITRD_OUT) || true
