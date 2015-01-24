@@ -1,3 +1,5 @@
+#include "fs/vfs.h"
+
 #include "fs/fs.h"
 
 void vfs_read_inode(superblock_t *sb, inode_t *inode)

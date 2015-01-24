@@ -1,16 +1,17 @@
 #include "device/ata.h"
 
-#include "bool.h"
 #include "bits.h"
+#include "bool.h"
 #include "compiler.h"
-#include "device/interrupt.h"
-#include "memory/kheap.h"
 #include "macros.h"
-#include "memory/memory.h"
-#include "device/pci.h"
-#include "device/port.h"
 #include "printf.h"
 #include "string.h"
+
+#include "device/interrupt.h"
+#include "device/pci.h"
+#include "device/port.h"
+#include "memory/kheap.h"
+#include "memory/memory.h"
 #include "memory/vmm.h"
 
 #define ATA_CHAN_PRIM 0
@@ -647,21 +648,21 @@ void init_ata()
     printf("Initializing ATA drives...\n");
 
     init_drives();
-    /* register_interrupt_callback(0x20, &ata_primary_irq); */
-    /* register_interrupt_callback(0x21, &ata_primary_irq); */
-    /* register_interrupt_callback(0x22, &ata_primary_irq); */
-    /* register_interrupt_callback(0x23, &ata_primary_irq); */
-    /* register_interrupt_callback(0x24, &ata_primary_irq); */
-    /* register_interrupt_callback(0x25, &ata_primary_irq); */
-    /* register_interrupt_callback(0x26, &ata_primary_irq); */
-    /* register_interrupt_callback(0x27, &ata_primary_irq); */
-    /* register_interrupt_callback(0x28, &ata_primary_irq); */
-    /* register_interrupt_callback(0x29, &ata_primary_irq); */
-    /* register_interrupt_callback(0x2A, &ata_primary_irq); */
-    /* register_interrupt_callback(0x2B, &ata_primary_irq); */
-    /* register_interrupt_callback(0x2C, &ata_primary_irq); */
-    register_interrupt_callback(0x20 + buses[ATA_BUS_PRI].irq, &ata_primary_irq);
-    register_interrupt_callback(0x20 + buses[ATA_BUS_SEC].irq, &ata_secondary_irq);
+    /* register_interrupt_handler(0x20, &ata_primary_irq); */
+    /* register_interrupt_handler(0x21, &ata_primary_irq); */
+    /* register_interrupt_handler(0x22, &ata_primary_irq); */
+    /* register_interrupt_handler(0x23, &ata_primary_irq); */
+    /* register_interrupt_handler(0x24, &ata_primary_irq); */
+    /* register_interrupt_handler(0x25, &ata_primary_irq); */
+    /* register_interrupt_handler(0x26, &ata_primary_irq); */
+    /* register_interrupt_handler(0x27, &ata_primary_irq); */
+    /* register_interrupt_handler(0x28, &ata_primary_irq); */
+    /* register_interrupt_handler(0x29, &ata_primary_irq); */
+    /* register_interrupt_handler(0x2A, &ata_primary_irq); */
+    /* register_interrupt_handler(0x2B, &ata_primary_irq); */
+    /* register_interrupt_handler(0x2C, &ata_primary_irq); */
+    register_interrupt_handler(0x20 + buses[ATA_BUS_PRI].irq, &ata_primary_irq);
+    register_interrupt_handler(0x20 + buses[ATA_BUS_SEC].irq, &ata_secondary_irq);
 
     uint32_t *out = kmalloc(MEM_DMA, 256);
     if (!out) {

@@ -1,13 +1,9 @@
-#ifdef __cplusplus
-#include "macros.h"
-EXTERN
-#endif
-
 #include "device/terminal.h"
 
 #include <stddef.h>
 
 #include "ldsymbol.h"
+#include "macros.h"
 #include "string.h"
 
 extern ldsymbol ld_screen;
@@ -231,7 +227,3 @@ void putuh(uint32_t i)
     string[8] = '\0';
     puts(string);
 }
-
-#ifdef __cplusplus
-ENDEXTERN
-#endif

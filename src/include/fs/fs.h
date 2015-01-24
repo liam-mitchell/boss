@@ -1,9 +1,9 @@
 #ifndef __FS_H_
 #define __FS_H_
 
-#include <stdint.h>
-
 #include "macros.h"
+
+#include <stdint.h>
 
 #define NAME_MAX 128
 

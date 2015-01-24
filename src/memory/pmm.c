@@ -1,20 +1,20 @@
 #include "memory/pmm.h"
 
 #include "bits.h"
-#include "device/descriptor_tables.h"
 #include "errno.h"
-#include "device/interrupt.h"
-#include "memory/kheap.h"
 #include "ldsymbol.h"
 #include "macros.h"
-#include "memory/memory.h"
 #include "mboot.h"
 #include "printf.h"
-#include "task.h"
-#include "device/terminal.h"
-#include "memory/vmm.h"
-
 #include <stdint.h>
+#include "task.h"
+
+#include "device/descriptor_tables.h"
+#include "device/interrupt.h"
+#include "device/terminal.h"
+#include "memory/kheap.h"
+#include "memory/memory.h"
+#include "memory/vmm.h"
 
 #define for_each_mmap_entry(entry, end, mboot)                                  \
     for (entry = (memory_map_t *)(mboot->mmap_addr),                            \
@@ -337,5 +337,5 @@ static void page_fault_handler(registers_t *regs)
 
 void init_paging()
 {
-    register_interrupt_callback(0x0E, &page_fault_handler);
+    register_interrupt_handler(0x0E, &page_fault_handler);
 }

@@ -2,9 +2,10 @@
 
 #include "compiler.h"
 #include "errno.h"
-#include "device/interrupt.h"
 #include "printf.h"
 #include "task.h"
+
+#include "device/interrupt.h"
 #include "fs/vfs.h"
 #include "memory/vmm.h"
 
@@ -130,7 +131,7 @@ static int sys_yield(void)
 
 static void syscall_handler(registers_t *regs)
 {
-    current_task->regs = *regs;
+    /* current_task->regs = *regs; */
 
     if (regs->eax >= nsyscalls || !syscalls[regs->eax]) {
         regs->eax = -ENOSYS;
@@ -167,5 +168,5 @@ static void syscall_handler(registers_t *regs)
 void init_syscalls(void)
 {
     printf("Initializing system calls...\n");
-    register_interrupt_callback(0x80, &syscall_handler);
+    register_interrupt_handler(0x80, &syscall_handler);
 }

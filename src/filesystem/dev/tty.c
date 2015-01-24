@@ -1,14 +1,15 @@
 #include "device/tty.h"
 
 #include "bits.h"
-#include "fs/fs.h"
-#include "fs/devfs.h"
-#include "device/keyboard.h"
-#include "memory/kheap.h"
-#include "memory/memory.h"
 #include "printf.h"
 #include "ring-buffer.h"
 #include "task.h"
+
+#include "device/keyboard.h"
+#include "fs/devfs.h"
+#include "fs/fs.h"
+#include "memory/kheap.h"
+#include "memory/memory.h"
 
 #define TTY_KEYBUF_SIZE 1024
 

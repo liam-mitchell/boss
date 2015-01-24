@@ -2,13 +2,14 @@
 
 #include "algorithm.h"
 #include "errno.h"
-#include "memory/kheap.h"
 #include "ldsymbol.h"
 #include "macros.h"
-#include "memory/memory.h"
-#include "task.h"
-#include "memory/pmm.h"
 #include "printf.h"
+#include "task.h"
+
+#include "memory/kheap.h"
+#include "memory/memory.h"
+#include "memory/pmm.h"
 #include "memory/vmm.h"
 
 extern ldsymbol ld_virtual_offset;

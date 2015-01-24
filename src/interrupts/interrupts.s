@@ -4,7 +4,7 @@
 
         [GLOBAL] read_eip
         
-extern interrupt_handler, irq_handler
+extern handle_interrupt, handle_irq
 
 isr_common:
 	pusha
@@ -19,7 +19,7 @@ isr_common:
 
 	push esp
 	
-	call interrupt_handler
+	call handle_interrupt
 
 	add esp, 4
 
@@ -46,7 +46,7 @@ irq_common:
 
 	push esp
 
-	call irq_handler
+	call handle_irq
 
 	add esp, 4
 

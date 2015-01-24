@@ -1,12 +1,13 @@
 #include "memory/kheap.h"
 
-#include "internal.h"
 #include "errno.h"
+#include "internal.h"
 #include "ldsymbol.h"
 #include "macros.h"
+#include "printf.h"
+
 #include "memory/memory.h"
 #include "memory/pmm.h"
-#include "printf.h"
 #include "memory/vmm.h"
 
 extern ldsymbol ld_heap_start;

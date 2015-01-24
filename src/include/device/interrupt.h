@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+
 #include "memory/pmm.h"
 
 typedef struct registers
@@ -13,7 +14,7 @@ typedef struct registers
     uint32_t eip, cs, eflags, esp, ss;
 } registers_t;
 
-typedef void (*interrupt_callback)(registers_t *); // allows registration of different callbacks for each interrupt
-void register_interrupt_callback(uint8_t n, interrupt_callback cb); // register a function as a callback
+typedef void (*interrupt_handler)(registers_t *);
+void register_interrupt_handler(uint8_t n, interrupt_handler cb); // register a function as a callback
 
 #endif

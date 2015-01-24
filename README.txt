@@ -98,15 +98,15 @@ Major features of the kernel are as follows:
       threads sleeping in the kernel and yielding before preemption ;)
 
       Core scheduler code can be found in src/tasks/task.c. Context saving code
-      is found unfortunately split between save_context() in task.c and the
-      IRQ/ISR handlers in src/interrupts/interrupts.s.
+      is found unfortunately split between switch_context() in src/tasks/task.h
+      and the IRQ/ISR handlers in src/interrupts/interrupts.s.
 
       The scheduler uses one kernel stack per thread, allocating a single page
       for each thread's kernel stack.
 
-      Process creation and execution can also be found in src/tasks/task.c (a
-      prime target for the current refactor - should soon be available in fork.c
-      and exec.c, among others :D ).
+      Process creation and execution code can be found in src/tasks/fork.c
+      and src/tasks/exec.c, respectively. These files map pretty much one-to-one
+      onto the similarly-named Unix system calls.
 
   - Virtual UNIX-like filesystem, allowing classic mountpoints for different
       types of filesystem within the same directory structure.
@@ -134,3 +134,13 @@ Major features of the kernel are as follows:
       supporting physical page allocation functions can be found in
       src/memory/vmm.c, and the functions used to allocate physical frames
       for those pages are in src/memory/pmm.c.
+
+  - Extensible system call interface (currently being extended :D )
+
+      Similar to Linux, uses registers to pass system call parameters (in the
+      same order, too). Enables simple system call extension by just adding
+      functions to the array void *syscalls[] in src/interrupts/syscalls.c.
+
+Thanks for your interest in the BOSS! Feel free to email any concerns to me
+(Liam Mitchell) at ldmitche@ucalgary.ca, or come chat with me sometime in
+#osdev on irc.freenode.org (/msg cmdrcoriander).

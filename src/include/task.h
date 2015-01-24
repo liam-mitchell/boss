@@ -1,9 +1,9 @@
 #ifndef __TASK_H_
 #define __TASK_H_
 
-#include "memory/address-space.h"
 #include "device/interrupt.h"
 #include "fs/fs.h"
+#include "memory/address-space.h"
 
 #define TASK_READY 0
 #define TASK_BLOCKED 1
@@ -12,20 +12,18 @@
 
 #define TASK_MAX_FILES 128
 
-typedef struct task {
-    registers_t regs;
+struct task {
     address_space_t *as;
 
     uint32_t esp0;
 
     uint32_t pid;
-    /* uint32_t state; */
 
     file_t *files[TASK_MAX_FILES];
 
     struct task *next;
     struct task *prev;
-} task_t;
+};
 
 struct task *current_task;
 

@@ -1,15 +1,15 @@
 #include "fs/fs.h"
 
-#include "fs/fs.h"
-#include "fs/initrd.h"
-#include "memory/kheap.h"
 #include "ldsymbol.h"
 #include "macros.h"
-#include "memory/memory.h"
 #include "printf.h"
 #include "string.h"
+
 #include "fs/devfs.h"
+#include "fs/initrd.h"
 #include "fs/vfs.h"
+#include "memory/kheap.h"
+#include "memory/memory.h"
 
 #define INODE_MAX 1024
 

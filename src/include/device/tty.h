@@ -3,6 +3,7 @@
 
 #include "bool.h"
 #include "ring-buffer.h"
+
 #include "device/terminal.h"
 
 struct tty {

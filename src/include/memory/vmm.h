@@ -1,10 +1,10 @@
 #ifndef __VMM_H_
 #define __VMM_H_
 
-#include <stdint.h>
-
 #include "bool.h"
+
 #include "compiler.h"
+#include <stdint.h>
 
 int alloc_page(uint32_t virtual, uint8_t readonly, uint8_t kernel);
 int alloc_pages(uint32_t virtual, uint8_t readonly,

@@ -2,14 +2,15 @@
 
 #include "compiler.h"
 #include "errno.h"
-#include "fs/fs.h"
-#include "memory/kheap.h"
 #include "macros.h"
-#include "memory/memory.h"
 #include "printf.h"
+#include <stdint.h>
 #include "string.h"
 
-#include <stdint.h>
+#include "fs/fs.h"
+#include "memory/kheap.h"
+
+#include "memory/memory.h"
 
 #define INITRD_MAX_FILES 64
 #define INITRD_MAGIC 0x0BADC0DE

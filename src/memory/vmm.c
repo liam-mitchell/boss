@@ -3,9 +3,11 @@
 #include "errno.h"
 #include "ldsymbol.h"
 #include "macros.h"
+#include "printf.h"
+
+
 #include "memory/memory.h"
 #include "memory/pmm.h"
-#include "printf.h"
 
 extern ldsymbol ld_temp_pages;
 extern ldsymbol ld_temp_pages_end;

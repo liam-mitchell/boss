@@ -1,15 +1,16 @@
 #include "device/keyboard.h"
 
+#include <stddef.h>
+
 #include "bits.h"
-#include "device/port.h"
 #include "errno.h"
-#include "device/interrupt.h"
 #include "printf.h"
 #include "ring-buffer.h"
 #include "task.h"
-#include "device/tty.h"
 
-#include <stddef.h>
+#include "device/interrupt.h"
+#include "device/port.h"
+#include "device/tty.h"
 
 #define KBD_DATA 0x60
 #define KBD_CTL 0x64
@@ -80,7 +81,7 @@ static void keyboard_handler(registers_t __unused *regs)
 
 void init_keyboard(void)
 {
-    register_interrupt_callback(0x21, keyboard_handler);
+    register_interrupt_handler(0x21, keyboard_handler);
     inb(KBD_DATA);
 }
 

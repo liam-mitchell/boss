@@ -1,8 +1,9 @@
 #include "ring-buffer.h"
 
+#include "printf.h"
+
 #include "memory/kheap.h"
 #include "memory/memory.h"
-#include "printf.h"
 
 int ring_buffer_read(struct ring_buffer *rbuf, void *buf, uint32_t n)
 {
@@ -30,22 +31,6 @@ int ring_buffer_read(struct ring_buffer *rbuf, void *buf, uint32_t n)
     }
 
     return ret;
-    /* uint32_t ret = n; */
-    /* rbuf->size -= n; */
-
-    /* void *end = rbuf->base + rbuf->len; */
-
-    /* if (rbuf->first + n > end) { */
-    /*     uint32_t len = end - rbuf->first; */
-    /*     memcpy(buf, rbuf->first, len); */
-    /*     n -= len; */
-    /*     rbuf->first = rbuf->base; */
-    /*     rbuf->size -= len; */
-    /* } */
-
-    /* memcpy(buf, rbuf->first, n); */
-    /* rbuf->first += n; */
-    /* rbuf->size -= n; */
 }
 
 int ring_buffer_write(struct ring_buffer *rbuf, void *buf, uint32_t n)

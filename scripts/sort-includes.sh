@@ -65,5 +65,5 @@ do
     fi
 done < $file
 
-cat $tmpfile
-# mv $tmpfile $file
+# cat $tmpfile
+mv $tmpfile $file
