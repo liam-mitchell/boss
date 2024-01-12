@@ -1,7 +1,7 @@
 #ifndef __ERRNO_H_
 #define __ERRNO_H_
 
-int errno;
+extern int errno;
 
 #define ENOENT 2
 #define EIO    6

@@ -25,7 +25,7 @@ struct task {
     struct task *prev;
 };
 
-struct task *current_task;
+extern struct task *current_task;
 
 void init_scheduler(void);
 int exec(const char *path);

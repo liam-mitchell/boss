@@ -16,10 +16,10 @@ struct dma_chunk {
     struct dma_chunk *next;
 };
 
-unsigned long kheap_top;
-struct chunk *free;
-struct dma_chunk *free_dma;
-struct dma_chunk *dma;
+extern unsigned long kheap_top;
+extern struct chunk *free;
+extern struct dma_chunk *free_dma;
+extern struct dma_chunk *dma;
 
 void *kmalloc_dma(unsigned long size);
 void kfree_dma(void *address);

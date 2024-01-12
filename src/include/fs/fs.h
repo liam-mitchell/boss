@@ -74,7 +74,7 @@ typedef struct file {
     void (*close)(file_t *);
 } file_ops_t;
 
-superblock_t *mounts;
+extern superblock_t *mounts;
 
 void init_filesystem();
 void mount(superblock_t *sb);

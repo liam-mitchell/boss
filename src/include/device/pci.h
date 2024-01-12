@@ -44,7 +44,7 @@ typedef struct pci_conf {
     uint8_t data[PCI_HDR_SIZE];
 } pci_conf_t;
 
-pci_conf_t ide_bus_conf;
+extern pci_conf_t ide_bus_conf;
 
 void init_pci();
 uint8_t get_pci_confb(const pci_conf_t conf, const pci_reg_t reg);

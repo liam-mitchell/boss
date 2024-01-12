@@ -10,7 +10,7 @@
 write-binary-int() {
     python <<EOF
 import struct
-with open("$1", "ba") as f:
+with open("$1", "ab") as f:
     f.write(struct.pack('i', $2))
 EOF
 }

@@ -24,6 +24,8 @@
 #define PCI_NDEVICES 32
 #define PCI_NFUNCS 8
 
+pci_conf_t ide_bus_conf;
+
 static uint32_t pci_conf_address(uint8_t bus, uint8_t device,
                                  uint8_t func, pci_reg_t reg)
 {

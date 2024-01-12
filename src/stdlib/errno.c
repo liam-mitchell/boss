@@ -2,6 +2,8 @@
 
 #include "string.h"
 
+int errno;
+
 char *strerror(int err)
 {
     static char buf[80] = { 0 };

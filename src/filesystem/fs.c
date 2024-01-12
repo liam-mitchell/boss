@@ -15,6 +15,8 @@
 
 extern ldsymbol ld_initrd;
 
+superblock_t *mounts;
+
 void mount(superblock_t *sb)
 {
     sb->next = NULL;

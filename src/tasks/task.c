@@ -20,6 +20,12 @@ extern ldsymbol ld_virtual_offset;
 
 static uint32_t next_pid;
 
+struct task *current_task;
+
+struct task *running;
+struct task *blocked;
+struct task *idle;
+
 /**
  * Task queue functions. Implemented with a simple doubly linked list.
  *

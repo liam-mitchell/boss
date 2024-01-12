@@ -12,6 +12,11 @@
 
 extern ldsymbol ld_heap_start;
 
+unsigned long kheap_top;
+struct chunk *free;
+struct dma_chunk *free_dma;
+struct dma_chunk *dma;
+
 static struct chunk *find_chunk(struct chunk *list, unsigned long size)
 {
     while (list) {

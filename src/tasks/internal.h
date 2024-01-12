@@ -13,9 +13,9 @@ struct task *task_queue_find(struct task **queue, uint32_t pid);
 
 unsigned long setup_stack(struct task *task, void *data, unsigned long size);
 
-struct task *running;
-struct task *blocked;
-struct task *idle;
+extern struct task *running;
+extern struct task *blocked;
+extern struct task *idle;
 
 #define switch_context(new) do {                                        \
     set_esp0(new->esp0);                                                \
