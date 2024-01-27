@@ -39,14 +39,23 @@ typedef enum
 uint8_t make_color(vga_color fg, vga_color bg);
 uint16_t make_vgachar(char c, uint8_t col);
 
-void init_terminal();
+void init_terminal(void);
 void terminal_setcolor(uint8_t color);
 void terminal_putentryat(char c, uint8_t color, size_t x, size_t y);
+void terminal_scroll(void);
 void putc(char c);
 void puts(const char *str);
 void puti(int32_t i);
 void putui(uint32_t i);
 void puth(uint32_t i);
 void putuh(uint32_t i);
+
+/* terminal location */
+extern size_t terminal_row;
+extern size_t terminal_column;
+
+/* current terminal colors + buffer base */
+extern uint8_t terminal_color;
+extern uint16_t *terminal_buffer;
 
 #endif // __TERMINAL_H_

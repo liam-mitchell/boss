@@ -5,6 +5,7 @@
 #include "ldsymbol.h"
 #include "macros.h"
 #include "printf.h"
+#include "string.h"
 
 #include "memory/memory.h"
 #include "memory/pmm.h"
@@ -136,7 +137,9 @@ static void add_chunk(struct chunk **list, struct chunk *chunk)
 
     if (!curr) {
         *list = chunk;
+
         defrag_after(chunk);
+
         return;
     }
 
@@ -145,6 +148,7 @@ static void add_chunk(struct chunk **list, struct chunk *chunk)
 
         add_before(curr, chunk);
         defrag_after(chunk);
+
         return;
     }
 
@@ -296,13 +300,15 @@ void init_kheap(void)
 
     struct chunk *chunk = (struct chunk *)kheap_top;
     chunk->size = PAGE_SIZE - sizeof(unsigned long);
+    chunk->next = NULL;
+    chunk->prev = NULL;
 
     free = NULL;
     dma = NULL;
     free_dma = NULL;
 
     add_chunk(&free, chunk);
-
     kheap_top += PAGE_SIZE;
+
     puts("Initialized kernel heap!\n");
 }

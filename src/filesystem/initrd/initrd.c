@@ -1,3 +1,4 @@
+
 #include "fs/initrd.h"
 
 #include "compiler.h"
@@ -149,7 +150,7 @@ static void initrd_close(file_t __unused *file)
 
 superblock_t *init_initrd(uint32_t start)
 {
-    printf("Initializing initrd at %x\n", start);
+    /* printf("Initializing initrd at %x\n", start); */
     const char *name = "init";
     superblock_t *sb = kzalloc(MEM_GEN, sizeof(*sb) + strlen(name) + 1);
 

@@ -2,13 +2,22 @@ include include.mk
 
 default: all
 
-all: $(ISO)
+all: dirs $(SYMBOLS) $(ISO)
 
-.PHONY: iso initrd build depends
+.PHONY: iso initrd build depends dirs
 iso: $(ISO)
 initrd: $(INITRD_OUT)
 build: $(BINARY)
 depends: $(DEPENDS)
+
+dirs: $(OBJDIR) $(BINDIR) $(ISODIR)
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+$(BINDIR):
+	mkdir -p $(BINDIR)
+$(ISODIR):
+	mkdir -p $(ISODIR)/boot
 
 $(DEPENDS): $(HEADERS)
 	@rm -f $(DEPENDS)
@@ -21,36 +30,35 @@ $(DEPENDS): $(HEADERS)
 -include $(DEPENDS)
 
 $(BINARY): $(DEPENDS) $(OBJFILES)
-	@echo "[LD]     bin/kernel.bin"
-	@$(CC) $(CFLAGS) $(OBJFILES) $(LDFLAGS) -o $(BINARY)
+	$(CC) $(CFLAGS) $(OBJFILES) $(LDFLAGS) -o $(BINARY)
+
+$(SYMBOLS): $(BINARY)
+ifeq ($(CONFIG),dbg)
+	objcopy --only-keep-debug $(BINARY) $(SYMBOLS)
+endif
 
 $(OBJDIR)/%.c.o: %.c
-	@echo "[CC]     $<"
-	@$(CC) -c $(CFLAGS) $< -o $(OBJDIR)/$(shell basename $@)
+	$(CC) -c $(CFLAGS) $< -o $(OBJDIR)/$(shell basename $@)
 
 $(OBJDIR)/%.s.o: %.s
-	@echo "[AS]     $<"
-	@$(AS) $(ASFLAGS) $< -o $(OBJDIR)/$(shell basename $@)
+	$(AS) $(ASFLAGS) $< -o $(OBJDIR)/$(shell basename $@)
 
 $(INITRD_OUT): $(INITRD_FILES)
-	@echo "[INITRD] $(GEN_INITRD)"
-	@$(GEN_INITRD) -o $(INITRD_OUT) -d $(INITRD) > /dev/null
+	$(GEN_INITRD) -o $(INITRD_OUT) -d $(INITRD) > /dev/null
 
 $(INITRD_FILES):
 	;
 
 $(ISO): $(BINARY) $(OBJFILES) $(INITRD_OUT)
-	@echo "[ISO]    bin/kernel.iso"
-	@cp bin/kernel.bin iso/boot/
-	@genisoimage -R -b boot/grub/stage2_eltorito \
+	cp $(BINARY) $(ISODIR)/boot/
+	cp -R grub/ $(ISODIR)/boot
+	genisoimage -R -b boot/grub/stage2_eltorito \
 	-no-emul-boot -boot-load-size 4 -input-charset utf-8 \
 	-boot-info-table -o $(ISO) $(ISODIR)
 
 clean:
-	@echo "[CLEAN]  $(ISO)"
-	@if [ -f $(ISO) ]; then rm $(ISO); fi
-	@echo "[CLEAN]  $(BINARY)"
-	@if [ -f $(BINARY) ]; then rm $(BINARY); fi
-	@echo "[CLEAN]  $(OBJDIR)"
-	@echo "[CLEAN]  $(INITRD_OUT)"
-	@rm -rf $(OBJDIR)/* $(INITRD_OUT) || true
+	rm -rf $(ROOT)/$(CONFIG)
+
+cleanall:
+	rm -rf $(ROOT)/opt
+	rm -rf $(ROOT)/dbg

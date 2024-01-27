@@ -9,17 +9,17 @@
 extern ldsymbol ld_screen;
 
 /* terminal location */
-static size_t terminal_row = 0;
-static size_t terminal_column = 0;
+size_t terminal_row = 0;
+size_t terminal_column = 0;
 
 /* current terminal colors + buffer base */
-static uint8_t terminal_color = COLOR_LIGHT_GREY | (COLOR_BLACK << 4);
-static uint16_t *terminal_buffer = (uint16_t *)0xB8000;
+uint8_t terminal_color = COLOR_LIGHT_GREY | (COLOR_BLACK << 4);
+uint16_t *terminal_buffer = (uint16_t *)0xB8000;
 
 /**
  * scroll terminal up one line
  */
-static void terminal_scroll()
+void terminal_scroll(void)
 {
     for (size_t y = 0; y < VGA_HEIGHT - 1; ++y) {
         for (size_t x = 0; x < VGA_WIDTH; ++x) {
@@ -61,7 +61,7 @@ uint16_t make_vgachar(char c, uint8_t col)
  * memory-mapped location of the VGA buffer for the screen
  * as well as characters to blank black
  */
-void init_terminal()
+void init_terminal(void)
 {
     terminal_row = 0;
     terminal_column = 0;
