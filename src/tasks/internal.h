@@ -10,12 +10,14 @@ void free_kstack(uint32_t esp0);
 void task_queue_add(struct task **queue, struct task *task);
 void task_queue_remove(struct task **queue, struct task *task);
 struct task *task_queue_find(struct task **queue, uint32_t pid);
+void task_queue_remove_safe(struct task **queue, struct task *task);
 
 unsigned long setup_stack(struct task *task, void *data, unsigned long size);
 
 extern struct task *running;
 extern struct task *blocked;
 extern struct task *idle;
+extern struct task *zombies;
 
 #define switch_context(new) do {                                        \
     set_esp0(new->esp0);                                                \

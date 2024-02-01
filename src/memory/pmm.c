@@ -333,6 +333,8 @@ static void page_fault_handler(registers_t *regs)
     if (!(regs->error & 0x4)) {
         PANIC("Kernel page fault!");
     }
+
+    PANIC("page fault");
 }
 
 void init_paging()

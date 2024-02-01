@@ -10,6 +10,7 @@
 #include "memory/vmm.h"
 
 static int sys_fork(void);
+static int sys_exit(int code);
 static int sys_read(int fd, char __user *buf, uint32_t len);
 static int sys_write(int fd, char __user *buf, uint32_t len);
 static int sys_open(char __user *path, uint8_t mode);
@@ -21,7 +22,7 @@ extern void restore_context(registers_t *new);
 
 static void *syscalls[] = {
     0, /* sys_setup */          /* 0 */
-    0, /* sys_exit */
+    sys_exit, /* sys_exit */
     sys_fork,
     sys_read,
     sys_write,
@@ -49,6 +50,11 @@ static int sys_exec(const char __user *path)
 static int sys_fork(void)
 {
     return fork();
+}
+
+static int sys_exit(int code)
+{
+    return exit(code);
 }
 
 static int sys_read(int fd, char __user *buf, uint32_t len)
@@ -132,13 +138,13 @@ static int sys_yield(void)
 static void syscall_handler(registers_t *regs)
 {
     /* current_task->regs = *regs; */
+    /* printf("handling syscall %x for current task %u\n", regs->eax, current_task->pid); */
 
     if (regs->eax >= nsyscalls || !syscalls[regs->eax]) {
         regs->eax = -ENOSYS;
         return;
     }
 
-    /* printf("handling syscall %x\n", regs->eax); */
     /* printf("syscall addr %x\n", syscalls[regs->eax]); */
     /* print_regs(regs, "before syscall, come from registers"); */
     

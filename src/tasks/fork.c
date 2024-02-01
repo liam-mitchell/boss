@@ -24,8 +24,6 @@ static uint32_t clone_kstack(uint32_t esp0)
 
 int fork(void)
 {
-    asm volatile ("cli");
-
     int err = 0;
 
     struct task *child = alloc_task();
@@ -48,6 +46,8 @@ int fork(void)
 
     registers_t *child_regs = (registers_t *)child->esp0;
     child_regs->eax = 0;
+
+    child->parent = current_task;
 
     task_queue_add(&running, child);
 

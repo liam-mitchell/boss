@@ -133,7 +133,7 @@ static void switch_page_table(const address_space_t *as, uint32_t virtual)
     uint32_t **pde = get_page_directory_entry(virtual);
     uint32_t **new_pde = &as->pgdir[DIRINDEX(virtual)];
 
-    if (!PG_FRAME((uint32_t)*pde != PG_FRAME((uint32_t)*new_pde))) {
+    if (PG_FRAME((uint32_t)*pde) != PG_FRAME((uint32_t)*new_pde)) {
         /* printf("switching page table %x to %x\n", *pde, *new_pde); */
 
         *pde = *new_pde;
@@ -224,6 +224,11 @@ int map_as_data(address_space_t *as, uint32_t len, void *data)
 
         memcpy(page, data, min(len - virtual, (uint32_t)PAGE_SIZE));
         data += PAGE_SIZE;
+
+	printf("map_as_data mapped file data:");
+	for (int i = 0x20 / 4; i < 0x34 / 4; ++i) {
+	    printf("    %x\n", page[i]);
+	}
 
         unmap_page((uint32_t)page);
         unmap_page((uint32_t)pt);

@@ -23,6 +23,8 @@ struct task {
 
     struct task *next;
     struct task *prev;
+
+    struct task *parent;
 };
 
 extern struct task *current_task;
@@ -30,6 +32,7 @@ extern struct task *current_task;
 void init_scheduler(void);
 int exec(const char *path);
 int fork(void);
+int exit(int code);
 
 void sleep(void);
 void wake(uint32_t pid);

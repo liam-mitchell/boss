@@ -25,6 +25,7 @@ struct task *current_task;
 struct task *running;
 struct task *blocked;
 struct task *idle;
+struct task *zombies;
 
 /**
  * Task queue functions. Implemented with a simple doubly linked list.
@@ -84,6 +85,15 @@ struct task *task_queue_find(struct task **queue, uint32_t pid)
     }
 
     return NULL;
+}
+
+void task_queue_remove_safe(struct task **queue, struct task *task)
+{
+    struct task *found = task_queue_find(queue, task->pid);
+    if (found) {
+	printf("removing task from queue %s\n", (queue == &running ? "running" : (queue == &blocked ? "blocked" : "zombies")));
+	task_queue_remove(queue, task);
+    }
 }
 
 /**
@@ -250,6 +260,9 @@ void init_scheduler(void)
         err = -ENOMEM;
         goto error;
     }
+
+    /* blocked = NULL; */
+    /* zombies = NULL; */
 
     printf("allocated idle and init tasks\n");
 
