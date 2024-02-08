@@ -149,15 +149,15 @@ static void syscall_handler(registers_t *regs)
     /* print_regs(regs, "before syscall, come from registers"); */
     
     void *syscall = syscalls[regs->eax];
-    asm volatile ("push %1\n\t"
+    asm volatile ("push %0\n\t"
+                  "push %1\n\t"
                   "push %2\n\t"
                   "push %3\n\t"
                   "push %4\n\t"
                   "push %5\n\t"
-                  "push %6\n\t"
-                  "call *%7\n\t"
+                  "call *%6\n\t"
                   "add $24, %%esp\n\t"
-                  : "=g"(regs->eax)
+                  : 
                   : "g"(regs->ebp), "g"(regs->edi),
                     "g"(regs->esi), "g"(regs->edx),
                     "g"(regs->ecx), "g"(regs->ebx),
