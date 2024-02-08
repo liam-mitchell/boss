@@ -33,10 +33,10 @@ int exec(const char *path)
         goto error_filedata;
     }
 
-    printf("exec recieved file data:");
-    for (int i = 0x20 / 4; i < 0x34 / 4; ++i) {
-	printf("    %x\n", ((uint32_t*)data)[i]);
-    }
+    /* printf("exec recieved file data:"); */
+    /* for (int i = 0x20 / 4; i < 0x34 / 4; ++i) { */
+    /* 	printf("    %x\n", ((uint32_t*)data)[i]); */
+    /* } */
 
     free_address_space(current_task->as);
     current_task->as = alloc_address_space();
@@ -74,9 +74,9 @@ int exec(const char *path)
         goto error_kstack;
     }
 
-    printf("switching address space\n");
+    /* printf("switching address space\n"); */
     switch_address_space(NULL, current_task->as);
-    printf("switching context\n");
+    /* printf("switching context\n"); */
     switch_context(current_task);
 
  error_kstack:

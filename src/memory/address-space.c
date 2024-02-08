@@ -225,10 +225,10 @@ int map_as_data(address_space_t *as, uint32_t len, void *data)
         memcpy(page, data, min(len - virtual, (uint32_t)PAGE_SIZE));
         data += PAGE_SIZE;
 
-	printf("map_as_data mapped file data:");
-	for (int i = 0x20 / 4; i < 0x34 / 4; ++i) {
-	    printf("    %x\n", page[i]);
-	}
+	/* printf("map_as_data mapped file data:"); */
+	/* for (int i = 0x20 / 4; i < 0x34 / 4; ++i) { */
+	/*     printf("    %x\n", page[i]); */
+	/* } */
 
         unmap_page((uint32_t)page);
         unmap_page((uint32_t)pt);

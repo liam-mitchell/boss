@@ -4,7 +4,10 @@
         mov ecx, msg
         mov edx, len
         int 0x80
-        jmp $
+
+	mov eax, 0x1
+	mov ebx, 0x0
+	int 0x80
 
         section .data
 msg:    db "Goodbye usermode world!", 0xA, 0

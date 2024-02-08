@@ -21,8 +21,8 @@ static int sys_yield(void);
 extern void restore_context(registers_t *new);
 
 static void *syscalls[] = {
-    0, /* sys_setup */          /* 0 */
-    sys_exit, /* sys_exit */
+    0,                          /* 0 */
+    sys_exit,
     sys_fork,
     sys_read,
     sys_write,

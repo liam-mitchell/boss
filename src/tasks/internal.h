@@ -21,8 +21,7 @@ extern struct task *zombies;
 
 #define switch_context(new) do {                                        \
     set_esp0(new->esp0);                                                \
-    uint32_t eax;                                                       \
-    asm volatile ("movl %1, %%esp\n\t"                                  \
+    asm volatile ("movl %0, %%esp\n\t"                                  \
                   "pop %%eax\n\t"                                       \
                   "mov %%ax, %%ds\n\t"                                  \
                   "mov %%ax, %%es\n\t"                                  \
@@ -31,9 +30,9 @@ extern struct task *zombies;
                   "popa\n\t"                                            \
                   "add $8, %%esp\n\t"                                   \
                   "iret\n\t"                                            \
-                  : "=a"(eax)                                           \
+                  :							\
                   : "g"(new->esp0)                                      \
-                  : "%ebx", "%ecx", "%edx", "%esi", "%edi");            \
+                  : "ebx", "ecx", "edx", "esi", "edi");			\
     } while (0);
 
 
