@@ -1,10 +1,6 @@
 #ifndef __MACROS_H_
 #define __MACROS_H_
 
-#define EXTERN extern "C" {
-#define ENDEXTERN }
-
-
 #include "device/terminal.h"
 
 #ifndef NULL
@@ -19,5 +15,8 @@
 
 #define ALIGN(x, a) __ALIGN_MASK((x),(typeof(x))(a) - 1)
 #define __ALIGN_MASK(x, m) ((x + m) & ~(m))
+
+#define STR(x) __STR2(x)
+#define __STR2(x) #x
 
 #endif /* __MACROS_H_ */

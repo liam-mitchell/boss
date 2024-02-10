@@ -5,6 +5,7 @@
 #include "mboot.h"
 #include "syscalls.h"
 #include "task.h"
+#include "test.h"
 
 #include "device/descriptor_tables.h"
 #include "device/keyboard.h"
@@ -36,6 +37,8 @@ void kernel_main(multiboot_info_t *mboot, uint32_t magic)
     init_filesystem();
     init_keyboard();
     init_syscalls();
-    /* init_pci(); */
+
+    ktest();
+
     init_scheduler();
 }
