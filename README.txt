@@ -49,7 +49,8 @@ WARNING: This has only been tested on VirtualBox!
 
 To load the operating system on a virtual machine of your choice, simply load
 it into the disk drive of the VM and select the ISO boot method as your primary
-choice.
+choice. There is a bug within the paging setup code that assumes 4GB of memory,
+so ensure you set your VM's system memory to 4GB.
 
 * 2.1 TRASH * Once the operating system boots and prints a copious amount of
 debug information to the screen, it will start trash, the BOSS's default shell.
@@ -62,11 +63,9 @@ to a flat binary file to load. Currently, since the only filesystems supported
 are the dev/ and init/ filesystems, this means the only programs available
 to be loaded are trash itself (/init/bin/trash), hello (/init/bin/hello) and
 goodbye (/init/bin/goodbye). hello and goodbye will simply print a message to
-the screen and loop forever (since no exit() system call is implemented yet).
-
-Also due to no exit() system call, there is no ability to wait for a child
-to finish executing - so trash always prints out its prompt immediately after
-exec() instead of executing the child then reprinting its prompt.
+the screen and exit - hello will exit successfully with return code 0, while
+goodbye will exit with code 1. trash will wait for its child to exit, print
+the return value and prompt for another program.
 
 trash is also unable to backspace (a crippling flaw - but nobody said it was
 a *good* shell ;) so you better get it right the first time!
@@ -104,11 +103,11 @@ Major features of the kernel are as follows:
       The scheduler uses one kernel stack per thread, allocating a single page
       for each thread's kernel stack.
 
-      Process creation and execution code can be found in src/tasks/fork.c
-      and src/tasks/exec.c, respectively. These files map pretty much one-to-one
-      onto the similarly-named Unix system calls.
+      Process management facilities can be found in src/tasks/, in fork.c,
+      exec.c, wait.c and exit.c. These files map pretty much 1-1 to the
+      Linux system calls of the same name.
 
-  - Virtual UNIX-like filesystem, allowing classic mountpoints for different
+- Virtual UNIX-like filesystem, allowing classic mountpoints for different
       types of filesystem within the same directory structure.
 
       Core VFS code can be found in src/filesystem/vfs.c. Specific filesystem
@@ -143,5 +142,5 @@ Major features of the kernel are as follows:
 
 Thanks for your interest in the BOSS! Feel free to email any concerns, requests,
 reports, stories or really whatever else to me (Liam Mitchell) at
-ldmitche [at] ucalgary [dot] ca, or come chat with me sometime in #osdev on
-irc.freenode.org (/msg cmdrcoriander).
+liamdmitchell [at] gmail [dot] com, or feel free to add me on Discord
+@commandercoriandersalamander.
