@@ -1,14 +1,5 @@
         [BITS 32]
 
-        ;; mov eax, 0x2
-        ;; int 0x80
-        ;; cmp eax, 0
-        ;; jg writeprompt
-
-        ;; mov eax, 0xB
-        ;; mov ebx, goodbye
-        ;; int 0x80
-        
 writeprompt:
         mov eax, 0x4            ; sys_write
         mov ebx, 0x1            ; stdout
@@ -53,8 +44,25 @@ getline_end:
         int 0x80
 
         cmp eax, 0
-        jg  writeprompt         ; jump back to prompt to exec again
+        je  exec                ; if we're the child, exec
 
+        mov ebx, eax            ; ebx = returned child pid
+        mov eax, 0x7            ; sys_wait
+        mov ecx, status         ; ecx = (int*)status
+        int 0x80                ; sys_wait(pid, status)
+
+        mov eax, [status]
+        add eax, 48             ; convert status to ASCII
+        mov [statusmsg + statuslen - 3], al ; add status to the end of statusmsg (before newline and null terminator)
+
+        mov eax, 0x4            ; sys_write
+        mov ebx, 0x1            ; stdout
+        mov ecx, statusmsg      ; buffer
+        mov edx, statuslen      ; length
+        int 0x80                ; sys_write(stdout, statusmsg, statuslen)
+        jmp writeprompt
+
+exec:
         mov eax, 0xB            ; or exec in this if we're the child
         mov ebx, buffer
         int 0x80
@@ -91,6 +99,11 @@ prlen:  equ $ - prompt
 err:    db "[trash] error: exec failed: ", 0
 errlen: equ $ - err
 
-goodbye:db "/init/bin/goodbye", 0
-
 nl:     db 0xA
+
+status: dd 0x0
+
+statusmsg:
+        db "[trash] process returned  ", 10, 0
+
+statuslen: equ $ - statusmsg

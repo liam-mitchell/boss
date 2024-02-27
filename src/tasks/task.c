@@ -121,6 +121,9 @@ struct task *alloc_task()
     task->files[1] = open_path("/dev/tty", MODE_WRITE);
     task->files[2] = open_path("/dev/tty", MODE_WRITE);
 
+    list_init(&task->children);
+    list_init(&task->children_list);
+
     return task;
 
  error_task:
@@ -286,6 +289,8 @@ void sleep(void)
     task_queue_remove(&running, current_task);
     task_queue_add(&blocked, current_task);
 
+    current_task->status = TASK_BLOCKED;
+
     asm volatile ("mov $12, %%eax\n\t"
                   "int $0x80\n\t"
                   : : :); // sys_yield() TODO: This shouldn't be syscall 12.. :P
@@ -298,5 +303,7 @@ void wake(uint32_t pid)
     if (task) {
         task_queue_remove(&blocked, task);
         task_queue_add(&running, task);
+
+	task->status = TASK_RUNNING;
     }
 }

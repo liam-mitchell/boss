@@ -48,6 +48,7 @@ int fork(void)
     child_regs->eax = 0;
 
     child->parent = current_task;
+    list_insert(&current_task->children, &child->children_list);
 
     task_queue_add(&running, child);
 

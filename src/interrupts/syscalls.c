@@ -10,9 +10,10 @@
 #include "memory/vmm.h"
 
 static int sys_fork(void);
-static int sys_exit(int code);
+static void sys_exit(int code);
 static int sys_read(int fd, char __user *buf, uint32_t len);
 static int sys_write(int fd, char __user *buf, uint32_t len);
+static int sys_wait(uint32_t pid, int __user *status);
 static int sys_open(char __user *path, uint8_t mode);
 static int sys_close(int fd);
 static int sys_exec(const char __user *path);
@@ -28,7 +29,7 @@ static void *syscalls[] = {
     sys_write,
     sys_open,                   /* 5 */
     sys_close,
-    0, /* sys_waitpid */
+    sys_wait,
     0, /* sys_creat */
     0, /* sys_link */
     0, /* sys_unlink */         /* 10 */
@@ -52,9 +53,14 @@ static int sys_fork(void)
     return fork();
 }
 
-static int sys_exit(int code)
+static void sys_exit(int code)
 {
-    return exit(code);
+    exit(code);
+}
+
+static int sys_wait(uint32_t pid, int __user *status)
+{
+    return wait(pid, status);
 }
 
 static int sys_read(int fd, char __user *buf, uint32_t len)

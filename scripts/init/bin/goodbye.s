@@ -6,7 +6,7 @@
         int 0x80
 
 	mov eax, 0x1
-	mov ebx, 0x0
+	mov ebx, 0x1
 	int 0x80
 
         section .data
